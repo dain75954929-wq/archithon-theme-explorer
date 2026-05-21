@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ArchiTinder · Design Decision Lab</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" />
+
+<style>
+  /* ===== Theme tokens (default = GitHub Dark) ===== */
+  :root {
+    --bg: #0D1117; --surface: #161B22; --surface-2: #1F242C; --surface-3: #30363D;
+    --border: rgba(255,255,255,0.1); --border-soft: rgba(255,255,255,0.14);
+    --text: #C9D1D9; --text-2: #E6EDF3; --text-muted: #8B949E; --text-dim: #6E7681;
+    --nav-bg: rgba(13,17,23,0.97); --header-bg: rgba(13,17,23,0.92);
+    --ai-bubble: rgba(22,27,34,0.85); --user-bubble: #30363D;
+    --input-bg: rgba(22,27,34,0.95); --tag-bg: rgba(255,255,255,0.12); --tag-border: rgba(255,255,255,0.22);
+    --progress-track: #1F242C;
+    --accent-1: #58A6FF; --accent-2: #7EE787; --accent-3: #FFA657;
+    --font-family: "IBM Plex Sans KR", -apple-system, system-ui, sans-serif;
+    --shadow: 0 4px 24px rgba(0,0,0,0.18);
+    --shadow-strong: 0 24px 60px rgba(0,0,0,0.4);
+  }
+
+  /* ===== Page chrome (the explorer UI itself stays neutral) ===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0a0a0a; color: #fff; font-family: "IBM Plex Sans KR", -apple-system, system-ui, sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  body { padding: 32px 24px 64px; max-width: 1400px; margin: 0 auto; }
+  button { font-family: inherit; }
+
+  .page-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
+    padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .brand h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .brand h1 .accent { color: #58A6FF; }
+  .brand p { font-size: 13px; color: #9ca3af; margin-top: 6px; }
+  .brand .badge {
+    display: inline-block; margin-top: 8px; padding: 3px 9px;
+    font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px; color: #9ca3af;
+  }
+  .reset-btn {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  }
+
+  /* ===== Controls Panel ===== */
+  .controls {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 6px 24px; margin-bottom: 32px;
+  }
+  .control-row { display: flex; align-items: center; gap: 24px; padding: 16px 0; }
+  .control-row + .control-row { border-top: 1px solid rgba(255,255,255,0.06); }
+  .control-label {
+    flex-shrink: 0; width: 130px;
+    font-size: 11px; font-weight: 600; color: #9ca3af;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .control-content { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .seg-tabs {
+    display: inline-flex; background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 3px; gap: 3px;
+  }
+  .seg-tab {
+    border: 0; background: transparent; color: #9ca3af;
+    font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 7px;
+    cursor: pointer; transition: all 0.18s;
+  }
+  .seg-tab.active { background: rgba(255,255,255,0.08); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #fff;
+    border-radius: 999px; padding: 6px 14px 6px 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+  }
+  .chip:hover { transform: translateY(-1px); }
+  .chip.active { border-color: #58A6FF; box-shadow: 0 0 0 2px rgba(88,166,255,0.25); }
+  .chip .dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid rgba(127,127,127,0.25);
+  }
+  .chip .star { color: #fbbf24; font-size: 11px; margin-left: 2px; }
+
+  .font-chip {
+    padding: 7px 14px; font-size: 14px; font-weight: 500;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #fff;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .font-chip.active { border-color: #58A6FF; box-shadow: 0 0 0 2px rgba(88,166,255,0.25); }
+  .font-chip .star { color: #fbbf24; font-size: 11px; margin-left: 4px; }
+
+  .screen-tab {
+    border: 0; background: transparent; color: #9ca3af;
+    font-size: 14px; font-weight: 500; padding: 8px 4px;
+    cursor: pointer; position: relative;
+    margin-right: 20px;
+  }
+  .screen-tab.active { color: #fff; }
+  .screen-tab.active::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -8px;
+    height: 2px; background: #58A6FF;
+  }
+
+  /* ===== Preview Stage ===== */
+  .stage {
+    margin-top: 24px;
+    padding: 32px 16px;
+    background: linear-gradient(180deg, #050505 0%, #0a0a0a 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+  }
+
+  /* ── Desktop mode: browser frame ── */
+  .stage[data-env="desktop"] .device {
+    width: 100%;
+    max-width: 1200px;
+    background: var(--bg);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .stage[data-env="desktop"] .browser-chrome {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+    background: #1a1a1a;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .stage[data-env="desktop"] .browser-chrome .dots {
+    display: flex; gap: 6px;
+  }
+  .stage[data-env="desktop"] .browser-chrome .dots span {
+    width: 12px; height: 12px; border-radius: 50%;
+  }
+  .stage[data-env="desktop"] .browser-chrome .dots span:nth-child(1) { background: #FF5F57; }
+  .stage[data-env="desktop"] .browser-chrome .dots span:nth-child(2) { background: #FEBC2E; }
+  .stage[data-env="desktop"] .browser-chrome .dots span:nth-child(3) { background: #28C840; }
+  .stage[data-env="desktop"] .browser-chrome .url {
+    flex: 1; margin-left: 12px;
+    padding: 5px 14px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    font-size: 12px; color: #8B949E;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .stage[data-env="desktop"] .screen {
+    height: 760px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-family);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+  }
+  /* On desktop, place nav as a left sidebar */
+  .stage[data-env="desktop"] .screen .nav-bar {
+    flex-shrink: 0;
+    width: 220px;
+    height: 100%;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 24px 12px;
+    gap: 4px;
+    border-top: 0;
+    border-right: 1px solid var(--border);
+    grid-template-columns: none;
+  }
+  .stage[data-env="desktop"] .screen .nav-bar .nav-item {
+    flex-direction: row;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    justify-content: flex-start;
+  }
+  .stage[data-env="desktop"] .screen .nav-bar .nav-item.active {
+    background: rgba(127,127,127,0.1);
+  }
+  .stage[data-env="desktop"] .screen .nav-bar .nav-item svg { width: 18px; height: 18px; }
+  .stage[data-env="desktop"] .screen .page-main {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .stage[data-env="desktop"] .screen .page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px; border-bottom: 1px solid var(--border);
+    background: var(--header-bg); backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 5; margin-bottom: 0;
+  }
+  .stage[data-env="desktop"] .screen .page-body { padding: 32px; }
+
+  /* ── Mobile mode: phone bezel ── */
+  .stage[data-env="mobile"] .device {
+    width: 414px;
+    height: 880px;
+    background: #1a1a1a;
+    border-radius: 54px;
+    padding: 14px;
+    position: relative;
+    box-shadow:
+      0 0 0 2px #2a2a2a inset,
+      0 30px 80px rgba(0,0,0,0.55);
+  }
+  .stage[data-env="mobile"] .device::before {
+    /* Dynamic Island */
+    content: '';
+    position: absolute;
+    top: 24px; left: 50%; transform: translateX(-50%);
+    width: 124px; height: 32px;
+    background: #000;
+    border-radius: 99px;
+    z-index: 10;
+  }
+  .stage[data-env="mobile"] .browser-chrome { display: none; }
+  .stage[data-env="mobile"] .screen {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-family);
+    border-radius: 42px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .stage[data-env="mobile"] .screen::before {
+    /* Status bar spacer (clock area) */
+    content: '';
+    height: 54px; flex-shrink: 0;
+    background: transparent;
+  }
+  .stage[data-env="mobile"] .screen .page-main {
+    flex: 1; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .stage[data-env="mobile"] .screen .page-header {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    background: var(--header-bg);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 5;
+  }
+  .stage[data-env="mobile"] .screen .page-body {
+    flex: 1; overflow-y: auto; padding: 16px;
+  }
+  .stage[data-env="mobile"] .screen .nav-bar {
+    flex-shrink: 0;
+    background: var(--nav-bg);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding: 8px 0 22px;
+  }
+
+  /* ===== Shared screen content (works in both envs) ===== */
+  .screen-instance { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .screen-instance.active { display: flex; }
+
+  .page-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    display: flex; align-items: center; justify-content: center; font-size: 16px; cursor: pointer;
+  }
+
+  /* Nav items (shape changes per env via .stage[data-env=...] above) */
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 500; color: var(--text-dim);
+    cursor: pointer; background: transparent; border: 0;
+  }
+  .nav-item.active { color: var(--accent-1); }
+  .nav-item svg { width: 22px; height: 22px; stroke-width: 1.8; }
+
+  /* ── AI Search ── */
+  .ai-greet { font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .ai-greet .accent { color: var(--accent-1); }
+  .ai-greet-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+  .recent-section { margin-bottom: 24px; }
+  .section-h { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+  .recent-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 6px; font-size: 13px; cursor: pointer;
+  }
+  .recent-item .icn { color: var(--text-dim); font-size: 14px; }
+  .chat-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .bubble { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
+  .bubble.ai { align-self: flex-start; background: var(--ai-bubble); border: 1px solid var(--border-soft); color: var(--text); border-bottom-left-radius: 4px; }
+  .bubble.user { align-self: flex-end; background: var(--user-bubble); color: var(--text); border-bottom-right-radius: 4px; }
+  .quick-replies { display: flex; flex-wrap: wrap; gap: 6px; }
+  .quick-reply {
+    font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer;
+  }
+  .chat-input-wrap {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px 4px 4px 18px;
+  }
+  .chat-input { flex: 1; background: transparent; border: 0; outline: none; color: var(--text); font-size: 14px; padding: 8px 0; }
+  .chat-input::placeholder { color: var(--text-muted); }
+  .chat-send {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    border: 0; color: #fff; cursor: pointer; font-size: 16px;
+  }
+
+  /* ── Discovery ── */
+  .discovery-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .progress-track { flex: 1; height: 6px; background: var(--progress-track); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 42%; background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); border-radius: 999px; }
+  .progress-text { font-size: 12px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .discovery-card {
+    flex: 1; min-height: 0;
+    border-radius: 24px; overflow: hidden; position: relative;
+    background: linear-gradient(135deg,
+      color-mix(in srgb, var(--accent-1) 70%, #000),
+      color-mix(in srgb, var(--accent-2) 50%, #000));
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 24px;
+    color: #fff;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+  }
+  .discovery-card::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 25% 15%, rgba(255,255,255,0.2), transparent 55%),
+                linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.78));
+  }
+  .gallery-hint {
+    position: absolute; z-index: 1; top: 16px; right: 16px;
+    font-size: 11px; font-weight: 500; padding: 5px 11px;
+    background: rgba(0,0,0,0.45); border-radius: 999px; color: #fff; backdrop-filter: blur(8px);
+  }
+  .discovery-meta { position: relative; z-index: 1; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.9; margin-bottom: 6px; }
+  .discovery-title { position: relative; z-index: 1; font-size: 26px; font-weight: 700; line-height: 1.15; margin-bottom: 12px; }
+  .discovery-sub { position: relative; z-index: 1; font-size: 13px; font-style: italic; color: rgba(255,255,255,0.7); margin-bottom: 14px; }
+  .discovery-tags { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag {
+    font-size: 11px; font-weight: 500; padding: 4px 10px;
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 999px; color: #fff; backdrop-filter: blur(6px);
+  }
+  .discovery-instructions { text-align: center; font-size: 11px; font-weight: 500; color: var(--text-muted); margin: 16px 0 12px; }
+  .discovery-actions { display: flex; align-items: center; justify-content: center; gap: 24px; padding-bottom: 8px; }
+  .swipe-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  }
+  .swipe-btn.like {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff; border-color: transparent; width: 64px; height: 64px; font-size: 26px;
+  }
+
+  /* ── Persona ── */
+  .persona-eyebrow { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .persona-title { font-size: 38px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px; }
+  .persona-title .accent { color: var(--accent-1); }
+  .persona-hero {
+    height: 180px; border-radius: 20px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2) 60%, var(--accent-3));
+    position: relative; overflow: hidden; margin-bottom: 20px;
+    display: flex; align-items: flex-end; padding: 18px;
+  }
+  .persona-hero::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.3), transparent 55%);
+  }
+  .persona-hero-label {
+    position: relative; z-index: 1; font-size: 12px; font-weight: 600; color: #fff;
+    background: rgba(0,0,0,0.35); backdrop-filter: blur(8px);
+    padding: 5px 12px; border-radius: 999px;
+  }
+  .persona-body { font-size: 15px; line-height: 1.6; color: var(--text-2); margin-bottom: 20px; }
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; color: var(--accent-1); }
+  .stat-card .label { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 4px; }
+  .mini-bldg-list { margin-bottom: 20px; }
+  .mini-bldg {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 8px;
+  }
+  .mini-bldg .thumb { width: 48px; height: 48px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-2), var(--accent-3)); flex-shrink: 0; }
+  .mini-bldg .info { flex: 1; min-width: 0; }
+  .mini-bldg .name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .mini-bldg .arch { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .mini-bldg .score { font-size: 11px; font-weight: 600; color: var(--accent-1); }
+  .persona-cta {
+    width: 100%; padding: 16px; border: 0; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    margin-bottom: 8px;
+  }
+  .persona-cta-ghost {
+    width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 14px;
+    background: transparent; color: var(--text); font-size: 14px; font-weight: 500; cursor: pointer;
+  }
+
+  /* ── Boards ── */
+  .boards-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--input-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; margin-bottom: 14px;
+  }
+  .boards-search input { flex: 1; background: transparent; border: 0; outline: none; color: var(--text); font-size: 14px; }
+  .boards-search input::placeholder { color: var(--text-muted); }
+  .boards-tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .boards-tab {
+    background: transparent; border: 0; color: var(--text-muted);
+    font-size: 14px; font-weight: 500; padding: 10px 0;
+    border-bottom: 2px solid transparent; cursor: pointer;
+  }
+  .boards-tab.active { color: var(--text); border-bottom-color: var(--accent-1); }
+  .board-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  /* On desktop more columns */
+  .stage[data-env="desktop"] .board-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .board-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden; cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .board-card:hover { transform: translateY(-3px); border-color: var(--accent-1); }
+  .board-cover { height: 110px; background: linear-gradient(135deg, var(--accent-2), var(--accent-3)); position: relative; }
+  .board-cover.alt-1 { background: linear-gradient(135deg, var(--accent-3), var(--accent-1)); }
+  .board-cover.alt-2 { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); }
+  .board-cover.alt-3 { background: linear-gradient(160deg, var(--accent-2), var(--accent-3)); }
+  .board-cover.alt-4 { background: linear-gradient(160deg, var(--accent-3), var(--accent-2)); }
+  .board-cover.alt-5 { background: linear-gradient(200deg, var(--accent-1), var(--accent-3)); }
+  .board-cover::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.22), transparent 50%); }
+  .board-info { padding: 12px 14px 14px; }
+  .board-name { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--text); }
+  .board-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ===== Design tokens panel ===== */
+  .tokens-section { margin-top: 56px; }
+  .tokens-title { font-size: 24px; font-weight: 600; margin-bottom: 18px; color: #fff; }
+  .tokens-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 768px) { .tokens-grid { grid-template-columns: 1fr; } }
+  .token-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; color: #fff; }
+  .token-card h3 { font-size: 13px; font-weight: 500; color: #9ca3af; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .swatch-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .swatch { border-radius: 10px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; min-height: 90px; }
+  .swatch .label { font-size: 11px; font-weight: 500; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.05em; }
+  .swatch .hex { font-size: 13px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .swatch.bg { background: var(--bg); color: var(--text); }
+  .swatch.surface { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .swatch.a1 { background: var(--accent-1); color: #fff; }
+  .swatch.a2 { background: var(--accent-2); color: #fff; }
+  .swatch.a3 { background: var(--accent-3); color: #fff; grid-column: span 2; }
+  .font-block { padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .font-block .name { font-size: 18px; font-weight: 600; color: #fff; }
+  .font-block .pairing { font-size: 11px; color: #9ca3af; margin-left: 8px; }
+  .font-block .pairing.match { color: #fbbf24; }
+  .font-block .stack { font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #6b7280; margin-top: 6px; word-break: break-all; }
+
+  /* ===== Mobile: ensure nav-bar sits at the BOTTOM of the phone screen =====
+     The phone screen is a column flex; ::before is the status-bar spacer.
+     Default DOM order puts nav-bar first (which is correct for desktop sidebar
+     layout). Use `order` to push it to the bottom for mobile only. */
+  .stage[data-env="mobile"] .screen .page-main { order: 1; }
+  .stage[data-env="mobile"] .screen .nav-bar   { order: 2; }
+
+  .note {
+    margin-top: 32px; padding: 18px 22px; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    font-size: 13px; color: #9ca3af; line-height: 1.6;
+  }
+  .note strong { color: #fff; }
+  .note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; color: #fff; }
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="brand">
+    <h1>Archi<span class="accent">Tinder</span> · Design Lab</h1>
+    <p>색상 · 폰트 · 환경 · 화면 4축으로 디자인을 비교하세요.</p>
+    <span class="badge">{{ themes|length }} themes · {{ fonts|length }} fonts · {{ screens|length }} screens · Desktop/Mobile</span>
+  </div>
+  <button class="reset-btn" id="resetBtn">↺ Use recommended font</button>
+</header>
+
+<!-- ===== Controls ===== -->
+<div class="controls">
+  <div class="control-row">
+    <div class="control-label">Color Theme</div>
+    <div class="control-content">
+      <div class="seg-tabs" id="modeTabs">
+        <button class="seg-tab" data-mode="light">Light</button>
+        <button class="seg-tab active" data-mode="dark">Dark</button>
+      </div>
+      <div id="themeChips" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+    </div>
+  </div>
+  <div class="control-row">
+    <div class="control-label">Font</div>
+    <div class="control-content" id="fontChips"></div>
+  </div>
+  <div class="control-row">
+    <div class="control-label">Environment</div>
+    <div class="control-content">
+      <div class="seg-tabs" id="envTabs">
+        <button class="seg-tab active" data-env="desktop">🖥 Desktop</button>
+        <button class="seg-tab" data-env="mobile">📱 Mobile</button>
+      </div>
+    </div>
+  </div>
+  <div class="control-row" id="screenSlotTop">
+    <div class="control-label">Screen</div>
+    <div class="control-content" id="screenTabs">
+      {% for s in screens %}
+      <button class="screen-tab {% if loop.first %}active{% endif %}" data-screen="{{ s.id }}">{{ s.name }}</button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- ===== Preview Stage ===== -->
+<div class="stage" data-env="desktop" id="stage">
+  <div class="device">
+    <div class="browser-chrome">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="url">archi-tinder.app</div>
+    </div>
+    <div class="screen">
+      <!-- Bottom (mobile) / Left (desktop) navigation — same markup, CSS reshapes per env -->
+      <nav class="nav-bar" id="navBar">
+        <button class="nav-item" data-nav="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="8"/></svg>
+          <span>Search</span>
+        </button>
+        <button class="nav-item" data-nav="discover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span>Discover</span>
+        </button>
+        <button class="nav-item" data-nav="boards">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+          <span>Boards</span>
+        </button>
+        <button class="nav-item" data-nav="profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+          <span>Profile</span>
+        </button>
+      </nav>
+
+      <div class="page-main">
+        <!-- ===== AI Search Screen ===== -->
+        <div class="screen-instance active" data-screen="ai-search">
+          <header class="page-header">
+            <div>
+              <div class="page-title">ArchiTinder AI</div>
+              <div class="page-sub">Discovery · round 1</div>
+            </div>
+            <button class="icon-btn">⌕</button>
+          </header>
+          <div class="page-body">
+            <div class="ai-greet">Find your <span class="accent">taste</span>.</div>
+            <div class="ai-greet-sub">Tell me what kind of architecture inspires you.</div>
+
+            <div class="recent-section">
+              <div class="section-h">Recent</div>
+              <div class="recent-item"><span class="icn">⌕</span>Brutalist office buildings</div>
+              <div class="recent-item"><span class="icn">⌕</span>Modern museum in Japan</div>
+              <div class="recent-item"><span class="icn">⌕</span>Boutique hospitality</div>
+            </div>
+
+            <div class="chat-section">
+              <div class="bubble ai">Hi! I'm ArchiTinder AI. What kind of building are you researching today?</div>
+              <div class="bubble user">A modern museum in Japan</div>
+              <div class="bubble ai">Got it — pulling references from Tadao Ando, SANAA, and Kengo Kuma...</div>
+              <div class="quick-replies">
+                <button class="quick-reply">Brutalist office</button>
+                <button class="quick-reply">Boutique hospitality</button>
+                <button class="quick-reply">Landscape park</button>
+              </div>
+            </div>
+
+            <div class="chat-input-wrap">
+              <input class="chat-input" placeholder="Find a modern museum in Japan..." />
+              <button class="chat-send">↑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Discovery Screen ===== -->
+        <div class="screen-instance" data-screen="discovery">
+          <header class="page-header">
+            <div>
+              <div class="page-title">Museum References</div>
+              <div class="page-sub">Based on your taste</div>
+            </div>
+            <button class="icon-btn">⤺</button>
+          </header>
+          <div class="page-body" style="display:flex; flex-direction:column;">
+            <div class="discovery-progress">
+              <span class="progress-text">8 / 20</span>
+              <div class="progress-track"><div class="progress-fill"></div></div>
+            </div>
+            <div class="discovery-card">
+              <div class="gallery-hint">View Gallery · 6</div>
+              <div class="discovery-meta">Cultural · Japan · 2004</div>
+              <div class="discovery-title">21st Century Museum<br/>of Contemporary Art</div>
+              <div class="discovery-sub">SANAA / Kazuyo Sejima + Ryue Nishizawa</div>
+              <div class="discovery-tags">
+                <span class="tag">Museum</span>
+                <span class="tag">2,800 m²</span>
+                <span class="tag">Kanazawa</span>
+                <span class="tag">Glass</span>
+              </div>
+            </div>
+            <div class="discovery-instructions">← skip · tap card · save →</div>
+            <div class="discovery-actions">
+              <button class="swipe-btn">✕</button>
+              <button class="swipe-btn like">♥</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Persona Screen ===== -->
+        <div class="screen-instance" data-screen="persona">
+          <header class="page-header">
+            <div>
+              <div class="page-title">Your Architecture Persona</div>
+              <div class="page-sub">Analysis Complete</div>
+            </div>
+            <button class="icon-btn">↗</button>
+          </header>
+          <div class="page-body">
+            <div class="persona-eyebrow">Your taste is found</div>
+            <div class="persona-title">The <span class="accent">Parametric</span><br/>Visionary</div>
+
+            <div class="persona-hero">
+              <span class="persona-hero-label">★ Signature Style</span>
+            </div>
+
+            <div class="persona-body">
+              You gravitate toward fluid geometries and dramatic cantilevers — work that bends material against gravity. Your saves favor parametric form-finding over orthogonal restraint.
+            </div>
+
+            <div class="stat-row">
+              <div class="stat-card"><div class="value">87%</div><div class="label">Parametric forms</div></div>
+              <div class="stat-card"><div class="value">12</div><div class="label">Saved buildings</div></div>
+              <div class="stat-card"><div class="value">4</div><div class="label">Architecture offices</div></div>
+              <div class="stat-card"><div class="value">92%</div><div class="label">Match confidence</div></div>
+            </div>
+
+            <div class="section-h">Top buildings</div>
+            <div class="mini-bldg-list">
+              <div class="mini-bldg">
+                <div class="thumb"></div>
+                <div class="info">
+                  <div class="name">Heydar Aliyev Center</div>
+                  <div class="arch">Zaha Hadid · 2012</div>
+                </div>
+                <div class="score">97%</div>
+              </div>
+              <div class="mini-bldg">
+                <div class="thumb"></div>
+                <div class="info">
+                  <div class="name">CCTV Headquarters</div>
+                  <div class="arch">OMA / Rem Koolhaas · 2012</div>
+                </div>
+                <div class="score">91%</div>
+              </div>
+              <div class="mini-bldg">
+                <div class="thumb"></div>
+                <div class="info">
+                  <div class="name">Casa da Música</div>
+                  <div class="arch">OMA · 2005</div>
+                </div>
+                <div class="score">88%</div>
+              </div>
+            </div>
+
+            <button class="persona-cta">View persona report →</button>
+            <button class="persona-cta-ghost">Share my taste</button>
+          </div>
+        </div>
+
+        <!-- ===== Boards Screen ===== -->
+        <div class="screen-instance" data-screen="boards">
+          <header class="page-header">
+            <div>
+              <div class="page-title">Boards</div>
+              <div class="page-sub">12 saved · 4 curated</div>
+            </div>
+            <button class="icon-btn">+</button>
+          </header>
+          <div class="page-body">
+            <div class="boards-search">
+              <span style="font-size:14px; color:var(--text-muted);">⌕</span>
+              <input placeholder="Search boards..." />
+            </div>
+            <div class="boards-tabs">
+              <button class="boards-tab active">My Boards</button>
+              <button class="boards-tab">Curated</button>
+              <button class="boards-tab">Following</button>
+            </div>
+            <div class="board-grid">
+              <div class="board-card"><div class="board-cover"></div><div class="board-info"><div class="board-name">Graduation Project</div><div class="board-meta">14 buildings · 2일 전</div></div></div>
+              <div class="board-card"><div class="board-cover alt-1"></div><div class="board-info"><div class="board-name">Museum References</div><div class="board-meta">8 buildings · 1주 전</div></div></div>
+              <div class="board-card"><div class="board-cover alt-2"></div><div class="board-info"><div class="board-name">Brutalist Civic</div><div class="board-meta">5 buildings · 2주 전</div></div></div>
+              <div class="board-card"><div class="board-cover alt-3"></div><div class="board-info"><div class="board-name">Boutique Hospitality</div><div class="board-meta">3 buildings · 1개월 전</div></div></div>
+              <div class="board-card"><div class="board-cover alt-4"></div><div class="board-info"><div class="board-name">Concrete Studies</div><div class="board-meta">7 buildings · 1개월 전</div></div></div>
+              <div class="board-card"><div class="board-cover alt-5"></div><div class="board-info"><div class="board-name">Landscape Park</div><div class="board-meta">4 buildings · 2개월 전</div></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.page-main -->
+    </div><!-- /.screen -->
+  </div><!-- /.device -->
+</div><!-- /.stage -->
+
+<!-- ===== Design Tokens Panel ===== -->
+<section class="tokens-section">
+  <h2 class="tokens-title">Design tokens</h2>
+  <div class="tokens-grid">
+    <div class="token-card">
+      <h3>Color Palette · <span id="themeName">—</span></h3>
+      <div class="swatch-row">
+        <div class="swatch bg"><span class="label">Background</span><span class="hex" id="hex-bg">—</span></div>
+        <div class="swatch surface"><span class="label">Surface</span><span class="hex" id="hex-surface">—</span></div>
+        <div class="swatch a1"><span class="label">Accent 1</span><span class="hex" id="hex-acc1">—</span></div>
+        <div class="swatch a2"><span class="label">Accent 2</span><span class="hex" id="hex-acc2">—</span></div>
+        <div class="swatch a3"><span class="label">Accent 3</span><span class="hex" id="hex-acc3">—</span></div>
+      </div>
+    </div>
+    <div class="token-card">
+      <h3>Typography</h3>
+      <div class="font-block">
+        <span class="name" id="fontName">—</span>
+        <span class="pairing" id="pairingBadge">—</span>
+        <div class="stack" id="fontStack">—</div>
+      </div>
+      {% for t in typography %}
+      <div style="padding:10px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); display:flex; align-items:baseline; gap:14px;">
+        <div style="flex-shrink:0; width:110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:#6b7280;">{{ t.name }} / {{ t.size }} / {{ t.weight }}</div>
+        <div style="flex:1; font-family: var(--font-family); color: var(--text);
+          {% if t.name == 'H1' %}font-size:48px; font-weight:700; line-height:1.1; letter-spacing:-0.02em;
+          {% elif t.name == 'H2' %}font-size:30px; font-weight:600;
+          {% elif t.name == 'Body' %}font-size:18px; font-weight:400;
+          {% else %}font-size:14px; font-weight:500;
+          {% endif %}">
+          {% if t.name == 'H1' %}건축의 결
+          {% elif t.name == 'H2' %}선집 · Anthology
+          {% elif t.name == 'Body' %}콘크리트의 거친 표면과 빛의 결이 만나, 공간은 비로소 호흡한다.
+          {% else %}Therme Vals · Peter Zumthor · 1996
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<div class="note">
+  <strong>사용법.</strong> 4축으로 디자인을 비교하세요: <code>색상</code> × <code>폰트</code> × <code>환경(Desktop/Mobile)</code> × <code>화면</code>.
+  ★ 마크는 Notion 가이드 추천 페어링입니다. 데스크탑은 좌측 사이드바 + 1200px 브라우저 프레임으로, 모바일은 414px 폰 베젤로 렌더됩니다.
+  데이터는 <code>app.py</code>의 <code>THEMES</code> / <code>FONTS</code> / <code>SCREENS</code>에서 관리됩니다. 결정 항목은
+  <code>DECISIONS.md</code> 참고.
+</div>
+
+<script id="theme-data" type="application/json">{{ themes|tojson }}</script>
+<script id="font-data" type="application/json">{{ fonts|tojson }}</script>
+<script id="screen-data" type="application/json">{{ screens|tojson }}</script>
+
+<script>
+  const THEMES_FLAT = JSON.parse(document.getElementById("theme-data").textContent);
+  const FONTS = JSON.parse(document.getElementById("font-data").textContent);
+  const SCREENS = JSON.parse(document.getElementById("screen-data").textContent);
+  const THEMES = {
+    light: THEMES_FLAT.filter(t => t.mode === "light"),
+    dark:  THEMES_FLAT.filter(t => t.mode === "dark"),
+  };
+
+  let mode = "dark";
+  let activeThemeId = THEMES.dark[0].id;
+  let activeFontId  = THEMES.dark[0].recommended_font;
+  let activeScreen  = SCREENS[0].id;
+  let activeEnv     = "desktop";
+
+  const findTheme = id => THEMES_FLAT.find(t => t.id === id);
+  const findFont  = id => FONTS.find(f => f.id === id);
+  const findScreen = id => SCREENS.find(s => s.id === id);
+
+  function applyColors(themeId) {
+    const t = findTheme(themeId);
+    if (!t) return;
+    activeThemeId = themeId;
+    const r = document.documentElement.style;
+
+    r.setProperty("--bg", t.bg);
+    r.setProperty("--surface", t.surface);
+    r.setProperty("--surface-2", t.surface2);
+    r.setProperty("--surface-3", t.surface3);
+    r.setProperty("--text", t.text);
+    r.setProperty("--text-2", t.text2);
+    r.setProperty("--text-muted", t.text_muted);
+    r.setProperty("--text-dim", t.text_dim);
+
+    if (t.mode === "dark") {
+      r.setProperty("--border", "rgba(255,255,255,0.1)");
+      r.setProperty("--border-soft", "rgba(255,255,255,0.14)");
+      r.setProperty("--nav-bg", t.bg + "f7");
+      r.setProperty("--header-bg", t.bg + "e6");
+      r.setProperty("--ai-bubble", t.surface + "d9");
+      r.setProperty("--user-bubble", t.surface3);
+      r.setProperty("--input-bg", t.surface + "f2");
+      r.setProperty("--progress-track", t.surface2);
+    } else {
+      r.setProperty("--border", "rgba(0,0,0,0.1)");
+      r.setProperty("--border-soft", "rgba(0,0,0,0.14)");
+      r.setProperty("--nav-bg", t.bg + "f7");
+      r.setProperty("--header-bg", t.bg + "f2");
+      r.setProperty("--ai-bubble", t.surface + "f2");
+      r.setProperty("--user-bubble", t.surface3);
+      r.setProperty("--input-bg", t.surface + "fa");
+      r.setProperty("--progress-track", t.surface2);
+    }
+
+    r.setProperty("--accent-1", t.accent1);
+    r.setProperty("--accent-2", t.accent2);
+    r.setProperty("--accent-3", t.accent3);
+
+    document.getElementById("themeName").textContent = t.name;
+    document.getElementById("hex-bg").textContent = t.bg.toUpperCase();
+    document.getElementById("hex-surface").textContent = t.surface.toUpperCase();
+    document.getElementById("hex-acc1").textContent = t.accent1.toUpperCase();
+    document.getElementById("hex-acc2").textContent = t.accent2.toUpperCase();
+    document.getElementById("hex-acc3").textContent = t.accent3.toUpperCase();
+
+    document.querySelectorAll("#themeChips .chip").forEach(c => {
+      c.classList.toggle("active", c.dataset.id === themeId);
+    });
+    renderFontChips();
+    updatePairing();
+  }
+
+  function applyFont(fontId) {
+    const f = findFont(fontId);
+    if (!f) return;
+    activeFontId = fontId;
+    document.documentElement.style.setProperty("--font-family", f.stack);
+    document.getElementById("fontName").textContent = f.name;
+    document.getElementById("fontStack").textContent = f.stack;
+    document.querySelectorAll(".font-chip").forEach(c => {
+      c.classList.toggle("active", c.dataset.id === fontId);
+    });
+    updatePairing();
+  }
+
+  function updatePairing() {
+    const t = findTheme(activeThemeId);
+    const badge = document.getElementById("pairingBadge");
+    if (!t) return;
+    const isMatch = t.recommended_font === activeFontId;
+    badge.textContent = isMatch
+      ? "★ 추천 페어링"
+      : `추천: ${findFont(t.recommended_font)?.name ?? "—"}`;
+    badge.classList.toggle("match", isMatch);
+  }
+
+  function setEnv(env) {
+    activeEnv = env;
+    document.getElementById("stage").dataset.env = env;
+    document.body.classList.toggle("env-mobile", env === "mobile");
+    document.body.classList.toggle("env-desktop", env === "desktop");
+    document.querySelectorAll("#envTabs .seg-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.env === env);
+    });
+  }
+
+  function setScreen(screenId) {
+    activeScreen = screenId;
+    document.querySelectorAll(".screen-instance").forEach(s => {
+      s.classList.toggle("active", s.dataset.screen === screenId);
+    });
+    document.querySelectorAll(".screen-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.screen === screenId);
+    });
+    /* sync bottom nav active state */
+    const navKey = findScreen(screenId)?.nav;
+    document.querySelectorAll("#navBar .nav-item").forEach(n => {
+      n.classList.toggle("active", n.dataset.nav === navKey);
+    });
+  }
+
+  function renderThemeChips() {
+    const wrap = document.getElementById("themeChips");
+    wrap.innerHTML = "";
+    THEMES[mode].forEach(t => {
+      const chip = document.createElement("button");
+      chip.className = "chip" + (t.id === activeThemeId ? " active" : "");
+      chip.dataset.id = t.id;
+      chip.innerHTML = `<span class="dot" style="background:${t.accent1}"></span>${t.name}`;
+      chip.addEventListener("click", () => applyColors(t.id));
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderFontChips() {
+    const wrap = document.getElementById("fontChips");
+    wrap.innerHTML = "";
+    const currentTheme = findTheme(activeThemeId);
+    FONTS.forEach(f => {
+      const chip = document.createElement("button");
+      chip.className = "font-chip" + (f.id === activeFontId ? " active" : "");
+      chip.dataset.id = f.id;
+      chip.style.fontFamily = f.stack;
+      const isRecommended = currentTheme && currentTheme.recommended_font === f.id;
+      chip.innerHTML = `${f.name}${isRecommended ? '<span class="star">★</span>' : ''}`;
+      chip.addEventListener("click", () => applyFont(f.id));
+      wrap.appendChild(chip);
+    });
+  }
+
+  /* Wire up controls */
+  document.querySelectorAll("#modeTabs .seg-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("#modeTabs .seg-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      mode = tab.dataset.mode;
+      activeThemeId = THEMES[mode][0].id;
+      renderThemeChips();
+      applyColors(activeThemeId);
+    });
+  });
+
+  document.querySelectorAll("#envTabs .seg-tab").forEach(tab => {
+    tab.addEventListener("click", () => setEnv(tab.dataset.env));
+  });
+
+  document.querySelectorAll(".screen-tab").forEach(tab => {
+    tab.addEventListener("click", () => setScreen(tab.dataset.screen));
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", () => {
+    const t = findTheme(activeThemeId);
+    if (t) applyFont(t.recommended_font);
+  });
+
+  /* Initialize */
+  renderThemeChips();
+  renderFontChips();
+  applyColors(activeThemeId);
+  applyFont(activeFontId);
+  setEnv("desktop");
+  setScreen(SCREENS[0].id);
+</script>
+</body>
+</html>

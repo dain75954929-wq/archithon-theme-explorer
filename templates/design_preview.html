@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ArchiTinder · design.md Live Preview</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css" />
+<link rel="stylesheet" href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css" />
+<link rel="stylesheet" href="https://webfontworld.github.io/gmarket/GmarketSans.css" />
+
+<style>
+  /* ===== Tokens applied straight from design.md ===== */
+  :root {
+    {% for k, v in design.tokens.items() %}
+    --{{ k }}: {{ v }};
+    {% endfor %}
+
+    /* derived */
+    --shadow:        0 4px 24px rgba(0,0,0,0.18);
+    --shadow-strong: 0 24px 60px rgba(0,0,0,0.4);
+  }
+
+  /* ===== Page chrome (the preview frame stays neutral dark) ===== */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #0a0a0a; color: #fff; font-family: "IBM Plex Sans KR", system-ui, sans-serif; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  body { padding: 32px 24px 64px; max-width: 1400px; margin: 0 auto; }
+  button { font-family: inherit; }
+
+  .page-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
+    padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .brand h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .brand h1 .accent { color: #58A6FF; }
+  .brand p { font-size: 13px; color: #9ca3af; margin-top: 6px; }
+  .brand .meta {
+    display: inline-flex; gap: 6px; align-items: center;
+    margin-top: 10px;
+    padding: 3px 10px;
+    font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 999px; color: #9ca3af;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+
+  .header-right { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .source-link {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    color: #fff; font-size: 13px; padding: 8px 14px; border-radius: 8px;
+    text-decoration: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .source-link:hover { background: rgba(255,255,255,0.08); }
+
+  /* ===== Controls ===== */
+  .controls {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 6px 24px; margin-bottom: 32px;
+  }
+  .control-row { display: flex; align-items: center; gap: 24px; padding: 14px 0; }
+  .control-row + .control-row { border-top: 1px solid rgba(255,255,255,0.06); }
+  .control-label {
+    flex-shrink: 0; width: 130px;
+    font-size: 11px; font-weight: 600; color: #9ca3af;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .control-content { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+  .seg-tabs {
+    display: inline-flex; background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 3px; gap: 3px;
+  }
+  .seg-tab {
+    border: 0; background: transparent; color: #9ca3af;
+    font-size: 13px; font-weight: 500; padding: 6px 14px; border-radius: 7px;
+    cursor: pointer; transition: all var(--motion-fast) var(--motion-ease);
+  }
+  .seg-tab.active { background: rgba(255,255,255,0.08); color: #fff; }
+
+  .screen-tab {
+    border: 0; background: transparent; color: #9ca3af;
+    font-size: 14px; font-weight: 500; padding: 8px 4px;
+    cursor: pointer; position: relative;
+    margin-right: 20px;
+  }
+  .screen-tab.active { color: #fff; }
+  .screen-tab.active::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: -8px;
+    height: 2px; background: #58A6FF;
+  }
+
+  /* Theme + font chips (override controls) */
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #fff;
+    border-radius: 999px; padding: 6px 14px 6px 6px;
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all var(--motion-fast) var(--motion-ease);
+    font-family: inherit;
+  }
+  .chip:hover { transform: translateY(-1px); }
+  .chip.active { border-color: #58A6FF; box-shadow: 0 0 0 2px rgba(88,166,255,0.25); }
+  .chip .dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(127,127,127,0.25); }
+  .chip .star { color: #fbbf24; font-size: 11px; margin-left: 2px; }
+
+  .font-chip {
+    padding: 7px 14px; font-size: 14px; font-weight: 500;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #fff;
+    cursor: pointer; transition: all var(--motion-fast) var(--motion-ease);
+  }
+  .font-chip.active { border-color: #58A6FF; box-shadow: 0 0 0 2px rgba(88,166,255,0.25); }
+  .font-chip .star { color: #fbbf24; font-size: 11px; margin-left: 4px; }
+
+  .reset-pill {
+    background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.35);
+    color: #fbbf24; font-size: 12px; font-weight: 500;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+    display: none;
+    font-family: inherit;
+  }
+  body.has-override .reset-pill { display: inline-flex; align-items: center; gap: 6px; }
+  .reset-pill:hover { background: rgba(251,191,36,0.18); }
+
+  .override-badge {
+    display: none;
+    margin-left: 8px; padding: 3px 8px;
+    background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35);
+    color: #fbbf24; font-size: 11px; font-weight: 500;
+    border-radius: 999px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  body.has-override .override-badge { display: inline-block; }
+
+  /* Trial badge (yellow pill marking experimental / decision-pending controls) */
+  .trial-badge {
+    display: inline-block;
+    margin-left: 8px; padding: 3px 8px;
+    background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35);
+    color: #fbbf24; font-size: 11px; font-weight: 500;
+    border-radius: 999px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* ===== Input focus pattern (DECISIONS.md §5.2) =====
+     - Default: 1px var(--border)
+     - Focused: 1px var(--accent-1) (no glow)
+     - Click moment (:active): glow shadow flashes, then fades back to focus state */
+  .stage .chat-input-wrap {
+    transition: border-color var(--motion-fast), box-shadow var(--motion-slow) var(--motion-ease-out);
+  }
+  .stage .chat-input-wrap:focus-within {
+    border-color: var(--accent-1);
+  }
+  .stage .chat-input-wrap:has(.chat-input:active) {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-1) 28%, transparent);
+    transition: border-color var(--motion-fast), box-shadow 0s;
+  }
+
+  /* ===== Folder hover (design.md §8.7) =====
+     Hover = lift + 1px accent outline around the full silhouette
+     (tab + body combined). Implemented as 4 stacked 1px drop-shadows so the
+     outline follows the tab's rounded slanted edge — which CSS `outline`
+     (always rectangular) cannot. No underneath shadow / glow. */
+
+  /* ===== Primary CTA glow on click (DECISIONS.md §5.1) =====
+     Same pattern as input focus — glow appears instantly on :active,
+     fades over 0.4s when released. */
+  .stage .chat-send,
+  .stage .swipe-btn.like,
+  .stage .persona-cta {
+    transition: transform        var(--motion-normal) var(--motion-ease),
+                background-color var(--motion-normal) var(--motion-ease),
+                border-color     var(--motion-normal) var(--motion-ease),
+                box-shadow       var(--motion-slow)   var(--motion-ease-out);
+  }
+  .stage .chat-send:active,
+  .stage .persona-cta:active {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-1) 28%, transparent);
+    transition: transform        var(--motion-normal) var(--motion-ease),
+                background-color var(--motion-normal) var(--motion-ease),
+                box-shadow 0s;
+  }
+  /* .swipe-btn.like already has a depth shadow; preserve it and stack the glow */
+  .stage .swipe-btn.like:active {
+    box-shadow:
+      0 6px 16px rgba(0,0,0,0.25),
+      0 0 0 6px color-mix(in srgb, var(--accent-1) 28%, transparent);
+    transition: transform var(--motion-normal) var(--motion-ease), box-shadow 0s;
+  }
+
+  /* ===== Vibe (always-on, per DECISIONS.md §1) =====
+     Glassmorphic + Fluid + Gesture-friendly (swipe hint only). */
+
+  /* Glassmorphic — frosted backdrop on top/bottom bars */
+  .stage .page-hdr,
+  .stage .nav-bar,
+  .stage .chat-input-wrap,
+  .stage .gallery-hint {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background-color: color-mix(in srgb, var(--bg) 72%, transparent);
+  }
+  .stage .gallery-hint { background: rgba(0,0,0,0.32); }
+
+  /* Fluid — smooth transitions + hover lift on interactive elements */
+  .stage button,
+  .stage .board-card,
+  .stage .folder-card,
+  .stage .recent-item,
+  .stage .quick-reply,
+  .stage .stat-card,
+  .stage .mini-bldg {
+    transition: transform        var(--motion-normal) var(--motion-ease),
+                background-color var(--motion-normal) var(--motion-ease),
+                border-color     var(--motion-normal) var(--motion-ease),
+                box-shadow       var(--motion-normal) var(--motion-ease);
+  }
+  .stage .board-card:hover,
+  .stage .folder-card:hover,
+  .stage .recent-item:hover,
+  .stage .swipe-btn:hover,
+  .stage .stat-card:hover,
+  .stage .mini-bldg:hover {
+    transform: translateY(-3px);
+  }
+
+  /* Gesture-friendly — swipe hint pill on the Discovery card front (no button ring) */
+  .stage .discovery-face.front::after {
+    content: "← swipe ✕   ·   swipe ♥ →";
+    position: absolute;
+    top: 14px; left: 14px; z-index: 2;
+    font-size: 11px; font-weight: 500;
+    padding: 5px 11px;
+    color: #fff;
+    background: rgba(0,0,0,0.4);
+    border-radius: 999px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  /* ===== Preview Stage (identical mechanics to explorer) ===== */
+  .stage {
+    margin-top: 24px;
+    padding: 32px 16px;
+    background: linear-gradient(180deg, #050505 0%, #0a0a0a 100%);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+  }
+
+  /* Desktop frame */
+  .stage[data-env="desktop"] .device {
+    width: 100%; max-width: 1200px;
+    background: var(--bg);
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .stage[data-env="desktop"] .browser-chrome {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; background: #1a1a1a;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .stage[data-env="desktop"] .browser-chrome .dots { display: flex; gap: 6px; }
+  .stage[data-env="desktop"] .browser-chrome .dots span { width: 12px; height: 12px; border-radius: 50%; }
+  .stage[data-env="desktop"] .browser-chrome .dots span:nth-child(1) { background: #FF5F57; }
+  .stage[data-env="desktop"] .browser-chrome .dots span:nth-child(2) { background: #FEBC2E; }
+  .stage[data-env="desktop"] .browser-chrome .dots span:nth-child(3) { background: #28C840; }
+  .stage[data-env="desktop"] .browser-chrome .url {
+    flex: 1; margin-left: 12px; padding: 5px 14px;
+    background: rgba(0,0,0,0.3); border-radius: 8px;
+    font-size: 12px; color: #8B949E; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .stage[data-env="desktop"] .screen {
+    height: 760px; background: var(--bg); color: var(--text);
+    font-family: var(--font-stack);
+    overflow: hidden; position: relative; display: flex;
+  }
+  .stage[data-env="desktop"] .screen .nav-bar {
+    flex-shrink: 0; width: 220px; height: 100%;
+    flex-direction: column; justify-content: flex-start;
+    padding: 24px 12px; gap: 4px;
+    border-top: 0; border-right: 1px solid var(--border);
+    grid-template-columns: none;
+  }
+  .stage[data-env="desktop"] .screen .nav-bar .nav-item {
+    flex-direction: row; gap: 12px; width: 100%;
+    padding: 10px 14px; border-radius: 8px;
+    font-size: 14px; justify-content: flex-start;
+  }
+  .stage[data-env="desktop"] .screen .nav-bar .nav-item.active {
+    background: rgba(127,127,127,0.1);
+  }
+  .stage[data-env="desktop"] .screen .nav-bar .nav-item svg { width: 18px; height: 18px; }
+  .stage[data-env="desktop"] .screen .page-main {
+    flex: 1; overflow-y: auto;
+    /* CRITICAL: column flex so screen-instance.active (flex:1) gets real height.
+       Without this, Discovery's .discovery-card (flex:1) collapses to 0. */
+    display: flex; flex-direction: column;
+  }
+  .stage[data-env="desktop"] .screen .page-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px; border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 5;
+  }
+  .stage[data-env="desktop"] .screen .page-body { padding: 32px; }
+
+  /* Mobile frame (iPhone-style bezel) */
+  .stage[data-env="mobile"] .device {
+    width: 414px; height: 880px;
+    background: #1a1a1a;
+    border-radius: 54px; padding: 14px;
+    position: relative;
+    box-shadow: 0 0 0 2px #2a2a2a inset, 0 30px 80px rgba(0,0,0,0.55);
+  }
+  .stage[data-env="mobile"] .device::before {
+    content: ''; position: absolute;
+    top: 24px; left: 50%; transform: translateX(-50%);
+    width: 124px; height: 32px; background: #000;
+    border-radius: 99px; z-index: 10;
+  }
+  .stage[data-env="mobile"] .browser-chrome { display: none; }
+  .stage[data-env="mobile"] .screen {
+    width: 100%; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: var(--font-stack);
+    border-radius: 42px; overflow: hidden;
+    position: relative; display: flex; flex-direction: column;
+  }
+  .stage[data-env="mobile"] .screen::before {
+    content: ''; height: 54px; flex-shrink: 0;
+  }
+  .stage[data-env="mobile"] .screen .page-main {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .stage[data-env="mobile"] .screen .page-hdr {
+    flex-shrink: 0; padding: 12px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 5;
+  }
+  .stage[data-env="mobile"] .screen .page-body { flex: 1; overflow-y: auto; padding: 16px; }
+  .stage[data-env="mobile"] .screen .nav-bar {
+    flex-shrink: 0; background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding: 8px 0 22px;
+  }
+
+  /* ===== Screens (use design.md-derived vars) ===== */
+  .screen-instance { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  .screen-instance.active { display: flex; }
+
+  .page-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .icon-btn {
+    width: var(--touch-target, 44px); height: var(--touch-target, 44px);
+    min-width: 36px; min-height: 36px;
+    border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer;
+  }
+
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 500; color: var(--text-dim);
+    cursor: pointer; background: transparent; border: 0;
+  }
+  .nav-item.active { color: var(--accent-1); }
+  .nav-item svg { width: 22px; height: 22px; stroke-width: 1.8; }
+
+  /* ===== AI Search (restored: chat UI) ===== */
+  .ai-greet {
+    font-size: calc(var(--h2-size-mobile, 24) * 1px);
+    font-weight: var(--h2-weight, 600);
+    line-height: 1.15; letter-spacing: -0.01em; margin-bottom: 8px;
+  }
+  .stage[data-env="desktop"] .ai-greet { font-size: calc(var(--h2-size-desktop, 30) * 1px); }
+  .ai-greet .accent { color: var(--accent-1); }
+  .ai-greet-sub {
+    font-size: calc(var(--caption-size-mobile, 13) * 1px);
+    font-weight: var(--caption-weight, 500);
+    color: var(--text-muted); margin-bottom: 20px;
+  }
+  .section-h {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+  }
+  .recent-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px;
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-pill, 999) * 1px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    margin-bottom: 8px; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .chat-section { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+  .bubble { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
+  .bubble.ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+  .bubble.user { align-self: flex-end; background: var(--surface-3); color: var(--text); border-bottom-right-radius: 4px; }
+  .quick-replies { display: flex; flex-wrap: wrap; gap: 6px; }
+  .quick-reply {
+    font-size: 12px; font-weight: 500;
+    padding: 7px 14px;
+    border-radius: calc(var(--radius-pill, 999) * 1px);
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text); cursor: pointer;
+  }
+  .chat-input-wrap {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 8px;
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-pill, 999) * 1px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 4px 4px 4px 18px;
+  }
+  .chat-input { flex: 1; background: transparent; border: 0; outline: none; color: var(--text); font-size: 14px; padding: 8px 0; font-family: inherit; }
+  .chat-input::placeholder { color: var(--text-muted); }
+  .chat-send {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    border: 0; color: #fff; cursor: pointer; font-size: 16px;
+  }
+
+  /* ===== Discovery (custom card per DECISIONS.md §5.3) =====
+     Front: project image + text hierarchy (title + architects + divider + 3-col info)
+     Back:  3D rotateY → horizontal-scrolling sub-image gallery */
+  .discovery-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .progress-track { flex: 1; height: 6px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 42%; background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); border-radius: 999px; }
+  .progress-text { font-size: 12px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .discovery-card {
+    flex: 1; min-height: 0;
+    perspective: 1200px;
+    cursor: grab;
+    touch-action: pan-y;   /* allow vertical scroll, intercept horizontal drag */
+  }
+  .discovery-card.dragging { cursor: grabbing; }
+
+  /* Swipe states (design.md §8.6 Interaction) */
+  .discovery-card.swipe-springback {
+    /* under threshold → return to center */
+    transition: transform var(--motion-normal) var(--motion-ease);
+  }
+  .discovery-card.swipe-exit {
+    /* over threshold (or keyboard/button-triggered) → fly off-screen */
+    transition: transform var(--motion-slow) var(--motion-ease-out),
+                opacity   var(--motion-slow) var(--motion-ease-out);
+    opacity: 0;
+  }
+  .discovery-flip-inner {
+    width: 100%; height: 100%;
+    position: relative;
+    transition: transform var(--motion-flip) var(--motion-ease);
+    transform-style: preserve-3d;
+  }
+  .discovery-card.flipped .discovery-flip-inner { transform: rotateY(180deg); }
+  .discovery-face {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: calc(var(--radius-lg, 20) * 1px);
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+  }
+  .discovery-face.front {
+    /* 실제 건축 사진 (Unsplash hotlink) */
+    background:
+      url("https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=900&auto=format&q=80") center/cover no-repeat,
+      var(--accent-1);  /* fallback */
+  }
+  /* Bottom dark fade — 텍스트 가독성을 위한 기본 처리 */
+  .discovery-face.front::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.82));
+  }
+  .discovery-face.back {
+    transform: rotateY(180deg);
+    background: #000;
+    display: flex; flex-direction: column;
+  }
+
+  /* Front: text hierarchy overlay */
+  .card-overlay {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 22px 22px 24px;
+    z-index: 1;
+    color: #fff;
+  }
+  .card-title {
+    font-size: 22px; font-weight: 700; line-height: 1.2;
+    margin: 0 0 5px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-architects {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin: 0 0 14px;
+  }
+  .card-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+    margin-bottom: 14px;
+  }
+  /* 3-col info row: items size to their text, gaps equal between (space-between) */
+  .card-info-3col {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .card-info-3col > div {
+    display: flex; flex-direction: column;
+    min-width: 0;
+  }
+  .card-info-3col .info-label {
+    color: rgba(255,255,255,0.5);
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+    /* Meta labels stay in default system font regardless of theme font choice */
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .card-info-3col .info-value {
+    color: #fff;
+    font-size: 13px; font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Back: horizontal-scrolling gallery */
+  .back-gallery {
+    flex: 1;
+    display: flex;
+    overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .back-gallery::-webkit-scrollbar { display: none; }
+  .back-gallery > div {
+    flex: 0 0 100%;
+    scroll-snap-align: start;
+    position: relative;
+  }
+  /* 실제 건축 사진 (Unsplash hotlink) */
+  .back-gallery > div:nth-child(1) {
+    background:
+      url("https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=900&auto=format&q=80") center/cover no-repeat,
+      var(--accent-1);
+  }
+  .back-gallery > div:nth-child(2) {
+    background:
+      url("https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=900&auto=format&q=80") center/cover no-repeat,
+      var(--accent-2);
+  }
+  .back-gallery > div:nth-child(3) {
+    background:
+      url("https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&auto=format&q=80") center/cover no-repeat,
+      var(--accent-3);
+  }
+  .back-gallery > div:nth-child(4) {
+    background:
+      url("https://images.unsplash.com/photo-1486718448742-163732cd1544?w=900&auto=format&q=80") center/cover no-repeat,
+      var(--surface-3);
+  }
+  .back-arrow {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.32);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: rgba(255,255,255,0.85);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .back-arrow.left  { left: 10px; }
+  .back-arrow.right { right: 10px; }
+  .back-action {
+    padding: 20px 16px 16px;
+    /* Original 검은 그래디언트 fade — 텍스트 가독성 보장 */
+    background: linear-gradient(to top, rgba(0,0,0,0.96) 0%, rgba(0,0,0,0.65) 45%, rgba(0,0,0,0.18) 80%, transparent 100%);
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    z-index: 3;
+  }
+  .back-action button {
+    /* "View Gallery"도 텍스트 — pill bg 제거하고 그래디언트 위 텍스트로 처리 */
+    width: 100%; padding: 10px;
+    background: transparent;
+    border: 0;
+    color: #fff;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .discovery-instructions {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin: 16px 0 12px;
+  }
+  .discovery-actions { display: flex; align-items: center; justify-content: center; gap: 24px; padding-bottom: 8px; }
+  .swipe-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+  }
+  .swipe-btn.like {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff; border-color: transparent; width: 64px; height: 64px; font-size: 26px;
+  }
+
+  /* Desktop: constrain Discovery body to mobile-like column (~414px),
+     center horizontally so the card matches the phone preview exactly. */
+  .stage[data-env="desktop"] [data-screen="discovery"] .page-body {
+    max-width: 414px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 16px;
+  }
+  /* Discovery card keeps a fixed 4:5 aspect ratio. When the viewport (and
+     therefore the container) narrows below 382px, the card shrinks
+     proportionally instead of distorting. */
+  .stage[data-env="desktop"] [data-screen="discovery"] .discovery-card {
+    flex: 0 0 auto;        /* override flex:1 — let aspect-ratio drive height */
+    width: 100%;
+    max-width: 382px;
+    aspect-ratio: 4 / 5;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ===== Persona (restored: full report) ===== */
+  .persona-eyebrow { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .persona-title {
+    font-size: calc(var(--h1-size-mobile, 32) * 1px);
+    font-weight: var(--h1-weight, 700);
+    line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px;
+  }
+  .stage[data-env="desktop"] .persona-title { font-size: calc(var(--h1-size-desktop, 48) * 1px); }
+  .persona-title .accent { color: var(--accent-1); }
+  .persona-hero {
+    height: 180px; border-radius: calc(var(--radius-lg, 20) * 1px);
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2) 60%, var(--accent-3));
+    position: relative; overflow: hidden; margin-bottom: 20px;
+    display: flex; align-items: flex-end; padding: 18px;
+  }
+  .persona-hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 80% 20%, rgba(255,255,255,0.3), transparent 55%); }
+  .persona-hero-label {
+    position: relative; z-index: 1; font-size: 12px; font-weight: 600; color: #fff;
+    background: rgba(0,0,0,0.35); padding: 5px 12px; border-radius: 999px;
+  }
+  .persona-body {
+    font-size: calc(var(--body-size-mobile, 16) * 1px);
+    font-weight: var(--body-weight, 400);
+    line-height: 1.6; color: var(--text-2); margin-bottom: 20px;
+  }
+  .stage[data-env="desktop"] .persona-body { font-size: calc(var(--body-size-desktop, 18) * 1px); }
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px); padding: 14px;
+  }
+  .stat-card .value { font-size: 22px; font-weight: 700; color: var(--accent-1); }
+  .stat-card .label { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 4px; }
+  .mini-bldg {
+    display: flex; align-items: center; gap: 12px; padding: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px); margin-bottom: 8px;
+  }
+  .mini-bldg .thumb { width: 48px; height: 48px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-2), var(--accent-3)); flex-shrink: 0; }
+  .mini-bldg .info { flex: 1; min-width: 0; }
+  .mini-bldg .name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .mini-bldg .arch { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .mini-bldg .score { font-size: 11px; font-weight: 600; color: var(--accent-1); }
+  .persona-cta {
+    width: 100%; padding: 16px; border: 0;
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; margin-bottom: 8px;
+  }
+  .persona-cta-ghost {
+    width: 100%; padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    background: transparent; color: var(--text);
+    font-size: 14px; font-weight: 500; cursor: pointer;
+  }
+
+  /* ===== Boards: real folder shape (SVG tab + body) ===== */
+  .folder-grid {
+    display: grid; grid-template-columns: 1fr; gap: 22px;
+    padding-top: 4px;
+  }
+  .stage[data-env="desktop"] .folder-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  /* Desktop responsive: reduce column count as viewport narrows.
+     3 cols (default) → 2 cols → 1 col. At 1-col, the folder card itself
+     locks into a fixed aspect ratio so it shrinks proportionally. */
+  @media (max-width: 1100px) {
+    .stage[data-env="desktop"] .folder-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 800px) {
+    .stage[data-env="desktop"] .folder-grid {
+      grid-template-columns: 1fr;
+      max-width: 414px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* 1-col: folder card maintains 5:6 aspect ratio while shrinking */
+    .stage[data-env="desktop"] .folder-card {
+      aspect-ratio: 5 / 6;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .stage[data-env="desktop"] .folder-card .folder-body {
+      flex: 1;
+      overflow: hidden;
+    }
+  }
+  .folder-card {
+    position: relative;
+    padding-top: 32px;       /* room for the visible portion of the tab */
+    cursor: pointer;
+    transition: transform var(--motion-normal) var(--motion-ease), filter var(--motion-fast);
+  }
+  .folder-card:hover {
+    transform: translateY(-3px);
+    filter:
+      drop-shadow( 1px  0   0 var(--accent-1))
+      drop-shadow(-1px  0   0 var(--accent-1))
+      drop-shadow( 0    1px 0 var(--accent-1))
+      drop-shadow( 0   -1px 0 var(--accent-1));
+  }
+
+  /* Tab is absolute-positioned and 48px tall (32 visible + 16 hidden behind
+     the body's rounded top-left corner). The hidden bottom 16px is a
+     rectangle of accent fill — body's rounded TL corner reveals it,
+     filling the gap that would otherwise show the page background.
+     min-width sizes the tab so the SVG slant-start lands at body middle. */
+  .folder-tab-wrap {
+    position: absolute;
+    top: 0;
+    left: 4px;
+    width: max-content;
+    min-width: calc((50% - 4px) / 0.7);
+    max-width: calc(100% - 20px);
+    height: 48px;
+    z-index: 1;
+    display: block;
+  }
+  .folder-tab-svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    overflow: visible;
+  }
+  .folder-tab-svg path {
+    fill: var(--accent-1);
+    stroke: none;
+  }
+  .folder-tab-label {
+    position: relative;
+    display: block;
+    /* padding-right 28% — the slant tab boundary at the text's TOP glyph
+       position (viewBox y≈21) is at x≈74. 28% padding (text ends at x=72)
+       keeps the top of text+ellipsis from overflowing past the slant. */
+    padding: 0 28% 0 18px;
+    line-height: 32px;
+    font-size: 13px; font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    /* JS (updateFolderEllipsis) handles all truncation with midline "⋯".
+       Use 'clip' so the browser's default "…" can't sneak in on subpixel
+       rendering edge cases. */
+    text-overflow: clip;
+    overflow: hidden;
+    z-index: 1;
+  }
+
+  .folder-body {
+    position: relative;
+    z-index: 2;              /* covers tab's lower half; body's rounded TL
+                                corner area is empty fill → reveals tab beneath */
+    background: var(--surface-2);
+    border-radius: 16px;     /* all four corners */
+    padding: 18px;
+    display: flex; flex-direction: column;
+  }
+  /* Content order (design.md §8.7):
+     1. Folder title (in tab)
+     2. Folder overview (long description)
+     3. One-line summary (short)
+     4. Divider
+     5. 3 project preview thumbnails (main images)
+     6. Project count + creation date */
+  .folder-overview {
+    font-size: calc(var(--body-size-mobile, 16) * 0.85px);
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .folder-summary {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 0;
+  }
+  .folder-divider {
+    height: 0;
+    border-top: 1px solid var(--border);
+    margin: 14px 0;
+  }
+  .folder-thumbs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .folder-meta {
+    display: flex; justify-content: space-between;
+    align-items: center; gap: 12px;
+    font-size: 11px; color: var(--text-muted);
+    letter-spacing: 0.02em;
+    /* Count/date use default system font (DECISIONS.md §5.3) */
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  /* count + date 같은 위계 — 별도 강조 없음 */
+  .folder-thumb {
+    aspect-ratio: 1;
+    border-radius: calc(var(--radius-sm, 8) * 1px);
+    background-size: cover;
+    background-position: center;
+    background-color: var(--accent-1);  /* fallback */
+    box-shadow: inset 0 -1px 0 rgba(0,0,0,0.08);
+  }
+  /* 실제 건축 사진 (Unsplash hotlink). 18장 = 6 폴더 × 3 썸네일.
+     폴더 테마에 맞춰 분류: 미술관/공공 / 미술관 / 브루탈리스트 / 호스피탈리티 / 콘크리트 / 랜드스케이프. */
+  .folder-card .folder-thumb    { background-image: url("https://images.unsplash.com/photo-1487958449943-2429e8be8625?w=400&auto=format&q=80"); }
+  .folder-card .folder-thumb.t2 { background-image: url("https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&auto=format&q=80"); }
+  .folder-card .folder-thumb.t3 { background-image: url("https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=400&auto=format&q=80"); }
+
+  .folder-card.alt-1 .folder-thumb    { background-image: url("https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&auto=format&q=80"); }
+  .folder-card.alt-1 .folder-thumb.t2 { background-image: url("https://images.unsplash.com/photo-1486718448742-163732cd1544?w=400&auto=format&q=80"); }
+  .folder-card.alt-1 .folder-thumb.t3 { background-image: url("https://images.unsplash.com/photo-1496564203457-11bb12075d90?w=400&auto=format&q=80"); }
+
+  .folder-card.alt-2 .folder-thumb    { background-image: url("https://images.unsplash.com/photo-1518563620770-22fa6c0cf7c1?w=400&auto=format&q=80"); }
+  .folder-card.alt-2 .folder-thumb.t2 { background-image: url("https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=400&auto=format&q=80"); }
+  .folder-card.alt-2 .folder-thumb.t3 { background-image: url("https://images.unsplash.com/photo-1517089596392-fb9a9033e05b?w=400&auto=format&q=80"); }
+
+  .folder-card.alt-3 .folder-thumb    { background-image: url("https://images.unsplash.com/photo-1517400508447-f8dd518b86db?w=400&auto=format&q=80"); }
+  .folder-card.alt-3 .folder-thumb.t2 { background-image: url("https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&q=80"); }
+  .folder-card.alt-3 .folder-thumb.t3 { background-image: url("https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&auto=format&q=80"); }
+
+  .folder-card.alt-4 .folder-thumb    { background-image: url("https://images.unsplash.com/photo-1466442929976-97f336a657be?w=400&auto=format&q=80"); }
+  .folder-card.alt-4 .folder-thumb.t2 { background-image: url("https://images.unsplash.com/photo-1531971589569-0d9370cbe1e5?w=400&auto=format&q=80"); }
+  .folder-card.alt-4 .folder-thumb.t3 { background-image: url("https://images.unsplash.com/photo-1494522855154-9297ac14b55f?w=400&auto=format&q=80"); }
+
+  .folder-card.alt-5 .folder-thumb    { background-image: url("https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=400&auto=format&q=80"); }
+  .folder-card.alt-5 .folder-thumb.t2 { background-image: url("https://images.unsplash.com/photo-1581349485608-9469926a8e5e?w=400&auto=format&q=80"); }
+  .folder-card.alt-5 .folder-thumb.t3 { background-image: url("https://images.unsplash.com/photo-1454782590-faaeae74321b?w=400&auto=format&q=80"); }
+
+  /* ===== Mobile: ensure nav-bar sits at the BOTTOM of the phone screen =====
+     The phone screen is a column flex; ::before is the status-bar spacer.
+     Default DOM order puts nav-bar first (which is correct for desktop sidebar).
+     Use `order` to push it to the bottom for mobile only. */
+  .stage[data-env="mobile"] .screen .page-main { order: 1; }
+  .stage[data-env="mobile"] .screen .nav-bar   { order: 2; }
+
+  /* ===== Token inspector ===== */
+  .tokens-section { margin-top: 56px; }
+  .tokens-title { font-size: 22px; font-weight: 600; margin-bottom: 16px; color: #fff; }
+  .tokens-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+  .token-cell {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  }
+  .token-cell .swatch { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; }
+  .token-cell .key { color: #9ca3af; flex-shrink: 0; }
+  .token-cell .val { color: #fff; word-break: break-all; }
+  .token-cell.user-defined { border-color: rgba(34,197,94,0.4); }
+  .token-cell.user-defined .key::after { content: " ●"; color: #22c55e; }
+
+  .note {
+    margin-top: 32px; padding: 18px 22px; background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+    font-size: 13px; color: #9ca3af; line-height: 1.6;
+  }
+  .note strong { color: #fff; }
+  .note code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; color: #fff; }
+
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="brand">
+    <h1>design<span class="accent">.md</span> Live Preview</h1>
+    <p>이 페이지는 <code style="color:#fff;">design.md</code>의 토큰을 그대로 적용합니다. 파일 저장 시 자동 새로고침.</p>
+    <span class="meta"><span class="live-dot"></span>WATCHING design.md · last mtime <span id="mtimeDisplay">{{ '%.0f'|format(design.mtime) }}</span></span>
+  </div>
+  <div class="header-right">
+    <a class="source-link" href="/api/design" target="_blank">/api/design</a>
+    <a class="source-link" href="http://127.0.0.1:5000/" target="_blank">↗ Theme Explorer (5000)</a>
+  </div>
+</header>
+
+<!-- ===== Controls ===== -->
+<div class="controls">
+  <div class="control-row">
+    <div class="control-label">Color Theme<span class="override-badge">override</span></div>
+    <div class="control-content">
+      <div class="seg-tabs" id="modeTabs">
+        <button class="seg-tab" data-mode="light">Light</button>
+        <button class="seg-tab active" data-mode="dark">Dark</button>
+      </div>
+      <div id="themeChips" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+      <button class="reset-pill" id="resetBtn">↺ Reset to design.md</button>
+    </div>
+  </div>
+  <div class="control-row">
+    <div class="control-label">Font<span class="override-badge">override</span></div>
+    <div class="control-content" id="fontChips"></div>
+  </div>
+  <div class="control-row">
+    <div class="control-label">Environment</div>
+    <div class="control-content">
+      <div class="seg-tabs" id="envTabs">
+        <button class="seg-tab active" data-env="desktop">🖥 Desktop</button>
+        <button class="seg-tab" data-env="mobile">📱 Mobile</button>
+      </div>
+      <span style="font-size:11px; color:#6b7280; margin-left:12px;">
+        화면 전환은 미리보기 내 <strong style="color:#9ca3af;">Search · Discover · Boards · Profile</strong> 네비를 직접 클릭하세요
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Preview Stage ===== -->
+<div class="stage" data-env="desktop" id="stage">
+  <div class="device">
+    <div class="browser-chrome">
+      <div class="dots"><span></span><span></span><span></span></div>
+      <div class="url">archi-tinder.app · {{ design.tokens['font-family'] }}</div>
+    </div>
+    <div class="screen">
+      <nav class="nav-bar">
+        <button class="nav-item" data-nav="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 21l-4.35-4.35"/><circle cx="11" cy="11" r="8"/></svg>
+          <span>Search</span>
+        </button>
+        <button class="nav-item" data-nav="discover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span>Discover</span>
+        </button>
+        <button class="nav-item" data-nav="boards">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+          <span>Boards</span>
+        </button>
+        <button class="nav-item" data-nav="profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
+          <span>Profile</span>
+        </button>
+      </nav>
+
+      <div class="page-main">
+        <!-- ===== AI Search (restored: chat UI) ===== -->
+        <div class="screen-instance active" data-screen="ai-search">
+          <header class="page-hdr">
+            <div><div class="page-title">ArchiTinder AI</div><div class="page-sub">Discovery · round 1</div></div>
+            <button class="icon-btn">⌕</button>
+          </header>
+          <div class="page-body" style="display:flex; flex-direction:column; height:100%;">
+            <div class="ai-greet">Find your <span class="accent">taste</span>.</div>
+            <div class="ai-greet-sub">Tell me what kind of architecture inspires you.</div>
+            <div class="section-h">Recent</div>
+            <div class="recent-item">⌕ &nbsp; Brutalist office buildings</div>
+            <div class="recent-item">⌕ &nbsp; Modern museum in Japan</div>
+            <div class="recent-item">⌕ &nbsp; Boutique hospitality</div>
+            <div class="chat-section">
+              <div class="bubble ai">Hi! I'm ArchiTinder AI. What kind of building are you researching today?</div>
+              <div class="bubble user">A modern museum in Japan</div>
+              <div class="bubble ai">Got it — pulling references from Tadao Ando, SANAA, and Kengo Kuma...</div>
+              <div class="quick-replies">
+                <button class="quick-reply">Brutalist office</button>
+                <button class="quick-reply">Boutique hospitality</button>
+                <button class="quick-reply">Landscape park</button>
+              </div>
+            </div>
+            <div class="chat-input-wrap">
+              <input class="chat-input" placeholder="Find a modern museum in Japan..." />
+              <button class="chat-send">↑</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Discovery (custom card: front=text hierarchy + 3-col, back=gallery) ===== -->
+        <div class="screen-instance" data-screen="discovery">
+          <header class="page-hdr">
+            <div><div class="page-title">Museum References</div><div class="page-sub">Based on your taste</div></div>
+            <button class="icon-btn">⤺</button>
+          </header>
+          <div class="page-body" style="display:flex; flex-direction:column; height:100%;">
+            <div class="discovery-progress">
+              <span class="progress-text">8 / 20</span>
+              <div class="progress-track"><div class="progress-fill"></div></div>
+            </div>
+            <div class="discovery-card" id="discoveryFlipCard">
+              <div class="discovery-flip-inner">
+                <!-- FRONT: image + text hierarchy -->
+                <div class="discovery-face front">
+                  <div class="card-overlay">
+                    <h2 class="card-title">21st Century Museum<br/>of Contemporary Art</h2>
+                    <p class="card-architects">SANAA / Kazuyo Sejima + Ryue Nishizawa</p>
+                    <div class="card-divider"></div>
+                    <div class="card-info-3col">
+                      <div><span class="info-label">YEAR</span><span class="info-value">2004</span></div>
+                      <div><span class="info-label">LOCATION</span><span class="info-value">Kanazawa</span></div>
+                      <div><span class="info-label">PROGRAM</span><span class="info-value">Museum</span></div>
+                    </div>
+                  </div>
+                </div>
+                <!-- BACK: horizontal scroll gallery -->
+                <div class="discovery-face back">
+                  <div class="back-gallery">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                  </div>
+                  <div class="back-arrow left">‹</div>
+                  <div class="back-arrow right">›</div>
+                  <div class="back-action"><button>View Gallery · 6 photos</button></div>
+                </div>
+              </div>
+            </div>
+            <div class="discovery-instructions">tap card to flip</div>
+            <div class="discovery-actions">
+              <button class="swipe-btn">✕</button>
+              <button class="swipe-btn like">♥</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== Persona (restored: full report) ===== -->
+        <div class="screen-instance" data-screen="persona">
+          <header class="page-hdr">
+            <div><div class="page-title">Your Architecture Persona</div><div class="page-sub">Analysis Complete</div></div>
+            <button class="icon-btn">↗</button>
+          </header>
+          <div class="page-body">
+            <div class="persona-eyebrow">Your taste is found</div>
+            <div class="persona-title">The <span class="accent">Parametric</span><br/>Visionary</div>
+            <div class="persona-hero"><span class="persona-hero-label">★ Signature Style</span></div>
+            <div class="persona-body">You gravitate toward fluid geometries and dramatic cantilevers — work that bends material against gravity.</div>
+            <div class="stat-row">
+              <div class="stat-card"><div class="value">87%</div><div class="label">Parametric forms</div></div>
+              <div class="stat-card"><div class="value">12</div><div class="label">Saved buildings</div></div>
+              <div class="stat-card"><div class="value">4</div><div class="label">Architecture offices</div></div>
+              <div class="stat-card"><div class="value">92%</div><div class="label">Match confidence</div></div>
+            </div>
+            <div class="section-h">Top buildings</div>
+            <div class="mini-bldg"><div class="thumb"></div><div class="info"><div class="name">Heydar Aliyev Center</div><div class="arch">Zaha Hadid · 2012</div></div><div class="score">97%</div></div>
+            <div class="mini-bldg"><div class="thumb"></div><div class="info"><div class="name">CCTV Headquarters</div><div class="arch">OMA / Rem Koolhaas · 2012</div></div><div class="score">91%</div></div>
+            <div class="mini-bldg"><div class="thumb"></div><div class="info"><div class="name">Casa da Música</div><div class="arch">OMA · 2005</div></div><div class="score">88%</div></div>
+            <button class="persona-cta">View persona report →</button>
+            <button class="persona-cta-ghost">Share my taste</button>
+          </div>
+        </div>
+
+        <!-- ===== Boards (folder tab redesign — SVG tab + new content order) ===== -->
+        <div class="screen-instance" data-screen="boards">
+          <header class="page-hdr">
+            <div><div class="page-title">Folders</div><div class="page-sub">6 collections</div></div>
+            <button class="icon-btn">+</button>
+          </header>
+          <div class="page-body">
+            <div class="folder-grid">
+              <div class="folder-card">
+                <div class="folder-tab-wrap">
+                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
+                  </svg>
+                  <span class="folder-tab-label" title="Graduation Project Reference Pack 2026">Graduation Project Reference Pack 2026</span>
+                </div>
+                <div class="folder-body">
+                  <p class="folder-overview">Final studio submission focusing on contemporary art spaces with permeable boundaries between gallery and city.</p>
+                  <p class="folder-summary">Museums · cultural spaces · permeable boundaries</p>
+                  <div class="folder-divider"></div>
+                  <div class="folder-thumbs">
+                    <div class="folder-thumb"></div>
+                    <div class="folder-thumb t2"></div>
+                    <div class="folder-thumb t3"></div>
+                  </div>
+                  <div class="folder-meta">
+                    <span class="count">14 projects</span>
+                    <span class="date">2026.03.14</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="folder-card alt-1">
+                <div class="folder-tab-wrap">
+                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
+                  </svg>
+                  <span class="folder-tab-label">Museum References</span>
+                </div>
+                <div class="folder-body">
+                  <p class="folder-overview">Curated examples of restraint and atmosphere in museum architecture, focused on light and material.</p>
+                  <p class="folder-summary">SANAA · Zumthor · Ando</p>
+                  <div class="folder-divider"></div>
+                  <div class="folder-thumbs">
+                    <div class="folder-thumb"></div>
+                    <div class="folder-thumb t2"></div>
+                    <div class="folder-thumb t3"></div>
+                  </div>
+                  <div class="folder-meta">
+                    <span class="count">8 projects</span>
+                    <span class="date">2026.04.02</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="folder-card alt-2">
+                <div class="folder-tab-wrap">
+                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
+                  </svg>
+                  <span class="folder-tab-label">Brutalist Civic</span>
+                </div>
+                <div class="folder-body">
+                  <p class="folder-overview">Concrete-led public buildings exploring weight, light, and texture as a civic gesture.</p>
+                  <p class="folder-summary">Raw concrete · civic presence</p>
+                  <div class="folder-divider"></div>
+                  <div class="folder-thumbs">
+                    <div class="folder-thumb"></div>
+                    <div class="folder-thumb t2"></div>
+                    <div class="folder-thumb t3"></div>
+                  </div>
+                  <div class="folder-meta">
+                    <span class="count">5 projects</span>
+                    <span class="date">2026.04.20</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="folder-card alt-3">
+                <div class="folder-tab-wrap">
+                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
+                  </svg>
+                  <span class="folder-tab-label">Boutique Hospitality</span>
+                </div>
+                <div class="folder-body">
+                  <p class="folder-overview">Hotels and lodgings that emphasise material warmth and craft detailing at a human scale.</p>
+                  <p class="folder-summary">Small hotels · intimate scale</p>
+                  <div class="folder-divider"></div>
+                  <div class="folder-thumbs">
+                    <div class="folder-thumb"></div>
+                    <div class="folder-thumb t2"></div>
+                    <div class="folder-thumb t3"></div>
+                  </div>
+                  <div class="folder-meta">
+                    <span class="count">3 projects</span>
+                    <span class="date">2026.03.28</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="folder-card alt-4">
+                <div class="folder-tab-wrap">
+                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
+                  </svg>
+                  <span class="folder-tab-label">Concrete Studies</span>
+                </div>
+                <div class="folder-body">
+                  <p class="folder-overview">Surface-level explorations of cast concrete across scales — formwork, finish, and joint detail.</p>
+                  <p class="folder-summary">Form · formwork · finish</p>
+                  <div class="folder-divider"></div>
+                  <div class="folder-thumbs">
+                    <div class="folder-thumb"></div>
+                    <div class="folder-thumb t2"></div>
+                    <div class="folder-thumb t3"></div>
+                  </div>
+                  <div class="folder-meta">
+                    <span class="count">7 projects</span>
+                    <span class="date">2026.02.10</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="folder-card alt-5">
+                <div class="folder-tab-wrap">
+                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
+                  </svg>
+                  <span class="folder-tab-label">Landscape Park</span>
+                </div>
+                <div class="folder-body">
+                  <p class="folder-overview">Projects where landscape strategy is the architecture itself, not a backdrop.</p>
+                  <p class="folder-summary">Built form meets terrain</p>
+                  <div class="folder-divider"></div>
+                  <div class="folder-thumbs">
+                    <div class="folder-thumb"></div>
+                    <div class="folder-thumb t2"></div>
+                    <div class="folder-thumb t3"></div>
+                  </div>
+                  <div class="folder-meta">
+                    <span class="count">4 projects</span>
+                    <span class="date">2026.01.22</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /.page-main -->
+    </div><!-- /.screen -->
+  </div><!-- /.device -->
+</div><!-- /.stage -->
+
+
+<!-- ===== Token Inspector ===== -->
+<section class="tokens-section">
+  <h2 class="tokens-title">Parsed tokens <span style="font-size:12px; color:#9ca3af; font-weight:400;">●&nbsp;design.md에서 정의된 키 · ○&nbsp;디폴트 사용</span></h2>
+  <div class="tokens-grid">
+    {% for k, v in design.tokens.items() %}
+    <div class="token-cell {% if k in design.parsed_keys %}user-defined{% endif %}">
+      {% if v.startswith('#') or v.startswith('rgb') %}
+      <span class="swatch" style="background: {{ v }};"></span>
+      {% endif %}
+      <span class="key">{{ k }}:</span>
+      <span class="val">{{ v }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="note">
+  <strong>이 페이지의 작동.</strong> <code>design.md</code>의 <code>```yaml</code> 블록에서 키:값을
+  추출해 CSS 변수로 주입합니다. 파일을 저장하면 1.5초 안에 자동 새로고침됩니다 (<code>/api/mtime</code> 폴링).
+  파싱되지 않은 키는 회색 점(○)으로, 정의된 키는 녹색 점(●)으로 표시됩니다.
+  <br/><br/>
+  <strong>같이 보면 좋은 도구.</strong>
+  http://127.0.0.1:5000/ (4개 테마 ↔ 2개 폰트 비교 익스플로러) ·
+  <code>DECISIONS.md</code> (결정 체크리스트).
+</div>
+
+<script id="themes-data" type="application/json">{{ themes|tojson }}</script>
+<script id="fonts-data" type="application/json">{{ fonts|tojson }}</script>
+
+<script>
+  const INITIAL_MTIME = {{ design.mtime }};
+  const SCREENS = {{ screens|tojson }};
+  const THEMES_FLAT = JSON.parse(document.getElementById("themes-data").textContent);
+  const FONTS = JSON.parse(document.getElementById("fonts-data").textContent);
+  const THEMES = {
+    light: THEMES_FLAT.filter(t => t.mode === "light"),
+    dark:  THEMES_FLAT.filter(t => t.mode === "dark"),
+  };
+
+  let mode = "dark";
+  let activeThemeId = null;   /* null = no override; use design.md */
+  let activeFontId  = null;
+
+  const findTheme = id => THEMES_FLAT.find(t => t.id === id);
+  const findFont  = id => FONTS.find(f => f.id === id);
+
+  /* ─── Environment / Screen ─── */
+  function setEnv(env) {
+    document.getElementById("stage").dataset.env = env;
+    document.querySelectorAll("#envTabs .seg-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.env === env);
+    });
+    document.body.classList.toggle("env-mobile", env === "mobile");
+    document.body.classList.toggle("env-desktop", env === "desktop");
+    /* Folder card width changes drastically between phone bezel and desktop
+       sidebar — re-measure ellipsis after layout settles. */
+    if (typeof updateFolderEllipsis === "function") {
+      setTimeout(updateFolderEllipsis, 0);
+    }
+  }
+
+  function setScreen(screenId) {
+    document.querySelectorAll(".screen-instance").forEach(s => {
+      s.classList.toggle("active", s.dataset.screen === screenId);
+    });
+    const navKey = SCREENS.find(s => s.id === screenId)?.nav;
+    document.querySelectorAll(".nav-bar .nav-item").forEach(n => {
+      n.classList.toggle("active", n.dataset.nav === navKey);
+    });
+    /* Boards labels are only measurable when their screen is active */
+    if (screenId === "boards" && typeof updateFolderEllipsis === "function") {
+      setTimeout(updateFolderEllipsis, 0);
+    }
+  }
+
+  /* Switch screen by clicking a nav-item (Search/Discover/Boards/Profile)
+     inside the preview. Maps nav key → screen id via SCREENS catalog. */
+  function setScreenByNav(navKey) {
+    const screen = SCREENS.find(s => s.nav === navKey);
+    if (screen) setScreen(screen.id);
+  }
+
+  /* ─── Theme / Font override (does NOT modify design.md — pure visual try-on) ─── */
+  function applyTheme(themeId) {
+    const t = findTheme(themeId);
+    if (!t) return;
+    activeThemeId = themeId;
+    const r = document.documentElement.style;
+    r.setProperty("--bg", t.bg);
+    r.setProperty("--surface", t.surface);
+    r.setProperty("--surface-2", t.surface2);
+    r.setProperty("--surface-3", t.surface3);
+    r.setProperty("--text", t.text);
+    r.setProperty("--text-2", t.text2);
+    r.setProperty("--text-muted", t.text_muted);
+    r.setProperty("--text-dim", t.text_dim);
+    r.setProperty("--accent-1", t.accent1);
+    r.setProperty("--accent-2", t.accent2);
+    r.setProperty("--accent-3", t.accent3);
+    if (t.mode === "dark") {
+      r.setProperty("--border", "rgba(255,255,255,0.1)");
+      r.setProperty("--border-soft", "rgba(255,255,255,0.14)");
+    } else {
+      r.setProperty("--border", "rgba(0,0,0,0.1)");
+      r.setProperty("--border-soft", "rgba(0,0,0,0.14)");
+    }
+    document.querySelectorAll(".chip").forEach(c => {
+      c.classList.toggle("active", c.dataset.id === themeId);
+    });
+    document.body.classList.add("has-override");
+    renderFontChips();  /* refresh star pairing */
+  }
+
+  function applyFont(fontId) {
+    const f = findFont(fontId);
+    if (!f) return;
+    activeFontId = fontId;
+    document.documentElement.style.setProperty("--font-stack", f.stack);
+    document.documentElement.style.setProperty("--font-family", f.name);
+    document.querySelectorAll(".font-chip").forEach(c => {
+      c.classList.toggle("active", c.dataset.id === fontId);
+    });
+    document.body.classList.add("has-override");
+    /* Different font → different text widths → recompute truncation */
+    if (typeof updateFolderEllipsis === "function") {
+      setTimeout(updateFolderEllipsis, 0);
+    }
+  }
+
+  function resetToDesignMd() {
+    /* Simplest reliable reset: reload — server re-parses design.md and reapplies */
+    location.reload();
+  }
+
+  function renderThemeChips() {
+    const wrap = document.getElementById("themeChips");
+    wrap.innerHTML = "";
+    THEMES[mode].forEach(t => {
+      const chip = document.createElement("button");
+      chip.className = "chip" + (t.id === activeThemeId ? " active" : "");
+      chip.dataset.id = t.id;
+      chip.innerHTML = `<span class="dot" style="background:${t.accent1}"></span>${t.name}`;
+      chip.addEventListener("click", () => applyTheme(t.id));
+      wrap.appendChild(chip);
+    });
+  }
+
+  function renderFontChips() {
+    const wrap = document.getElementById("fontChips");
+    wrap.innerHTML = "";
+    const currentTheme = findTheme(activeThemeId);
+    FONTS.forEach(f => {
+      const chip = document.createElement("button");
+      chip.className = "font-chip" + (f.id === activeFontId ? " active" : "");
+      chip.dataset.id = f.id;
+      chip.style.fontFamily = f.stack;
+      const isRecommended = currentTheme && currentTheme.recommended_font === f.id;
+      chip.innerHTML = `${f.name}${isRecommended ? '<span class="star">★</span>' : ''}`;
+      chip.addEventListener("click", () => applyFont(f.id));
+      wrap.appendChild(chip);
+    });
+  }
+
+  /* ─── Wire up controls ─── */
+  document.querySelectorAll("#envTabs .seg-tab").forEach(tab => {
+    tab.addEventListener("click", () => setEnv(tab.dataset.env));
+  });
+  /* Make in-preview nav functional — clicking it switches the active screen */
+  document.querySelectorAll(".nav-bar .nav-item").forEach(btn => {
+    btn.addEventListener("click", () => setScreenByNav(btn.dataset.nav));
+  });
+  document.querySelectorAll("#modeTabs .seg-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("#modeTabs .seg-tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      mode = tab.dataset.mode;
+      renderThemeChips();
+    });
+  });
+  document.getElementById("resetBtn").addEventListener("click", resetToDesignMd);
+
+/* ═══════════════════════════════════════════════════════════════════════
+     Discovery interaction (design.md §8.6 Interaction)
+     - Tap/Enter/photo-click → flip (front ↔ back gallery)
+     - Drag horizontally OR ArrowLeft/Right OR ✕/♥ buttons → swipe
+     - Drag threshold: 25% of card width; under → spring back, over → exit
+     - Card resets to center after exit (same photo per user preference)
+     ═══════════════════════════════════════════════════════════════════════ */
+  (function setupDiscoveryInteraction() {
+    const card = document.getElementById("discoveryFlipCard");
+    if (!card) return;
+    const stage = document.getElementById("stage");
+
+    const TAP_THRESHOLD = 5;          // px — below this, treat as tap (not drag)
+    const SWIPE_THRESHOLD_PCT = 0.25; // 25% of card width
+
+    let dragState = null;     // null | { startX, currentDx, cardWidth, pointerId }
+    let suppressNextClick = false;
+
+    function isDiscoveryActive() {
+      return stage.querySelector(".screen-instance.active")?.dataset.screen === "discovery";
+    }
+
+    function resetToCenter() {
+      /* Snap back to (0,0) with no transition, then re-enable transitions */
+      card.classList.remove("swipe-exit", "swipe-springback");
+      card.style.transition = "none";
+      card.style.transform = "";
+      card.style.opacity = "1";
+      void card.offsetWidth;          /* force reflow */
+      card.style.transition = "";
+    }
+
+    function flyOff(direction) {
+      /* direction: 'like' (right) | 'skip' (left) */
+      const dx = direction === "like" ? "150%" : "-150%";
+      const rot = direction === "like" ? "18deg" : "-18deg";
+      card.classList.remove("swipe-springback");
+      card.classList.add("swipe-exit");
+      card.style.transform = `translateX(${dx}) rotate(${rot})`;
+      setTimeout(resetToCenter, 420);
+    }
+
+    function springBack() {
+      card.classList.remove("swipe-exit");
+      card.classList.add("swipe-springback");
+      card.style.transform = "";
+      setTimeout(() => card.classList.remove("swipe-springback"), 240);
+    }
+
+    /* ── Pointer drag (mouse + touch via pointer events) ── */
+    card.addEventListener("pointerdown", (e) => {
+      if (card.classList.contains("flipped")) return;
+      if (e.target.closest("button")) return;
+      if (e.target.closest(".back-gallery")) return;
+      dragState = {
+        startX: e.clientX,
+        currentDx: 0,
+        cardWidth: card.offsetWidth,
+        pointerId: e.pointerId,
+      };
+      card.setPointerCapture(e.pointerId);
+    });
+
+    card.addEventListener("pointermove", (e) => {
+      if (!dragState) return;
+      dragState.currentDx = e.clientX - dragState.startX;
+      if (Math.abs(dragState.currentDx) < TAP_THRESHOLD) return;
+      card.classList.add("dragging");
+      card.style.transition = "none";
+      card.style.transform = `translateX(${dragState.currentDx}px) rotate(${dragState.currentDx / 20}deg)`;
+    });
+
+    function endDrag(e) {
+      if (!dragState) return;
+      const { currentDx, cardWidth } = dragState;
+      try { card.releasePointerCapture(dragState.pointerId); } catch (_) {}
+      dragState = null;
+      card.classList.remove("dragging");
+      card.style.transition = "";
+
+      if (Math.abs(currentDx) < TAP_THRESHOLD) {
+        /* Tap — let click handler toggle flip */
+        return;
+      }
+      suppressNextClick = true;
+      setTimeout(() => { suppressNextClick = false; }, 120);
+
+      if (Math.abs(currentDx) > cardWidth * SWIPE_THRESHOLD_PCT) {
+        flyOff(currentDx > 0 ? "like" : "skip");
+      } else {
+        springBack();
+      }
+    }
+    card.addEventListener("pointerup", endDrag);
+    card.addEventListener("pointercancel", endDrag);
+
+    /* ── Click → flip (suppressed right after a drag) ── */
+    card.addEventListener("click", (e) => {
+      if (suppressNextClick) return;
+      if (e.target.closest("button")) return;
+      card.classList.toggle("flipped");
+    });
+
+    /* ── ✕ (skip) / ♥ (like) buttons → fly off ── */
+    document.querySelectorAll(".discovery-actions .swipe-btn").forEach((btn) => {
+      const isLike = btn.classList.contains("like");
+      btn.addEventListener("click", () => flyOff(isLike ? "like" : "skip"));
+    });
+
+    /* ── Keyboard (Discovery active only) ── */
+    document.addEventListener("keydown", (e) => {
+      if (!isDiscoveryActive()) return;
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (!card.classList.contains("flipped")) flyOff("skip");
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (!card.classList.contains("flipped")) flyOff("like");
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        card.classList.toggle("flipped");
+      }
+    });
+  })();
+
+  /* Folder tab ellipsis: replace default "…" (baseline) with "⋯" (midline)
+     by manually truncating text. Browsers don't support `text-overflow:
+     '<string>'` consistently, so we measure and slice in JS. */
+  const FOLDER_ELLIPSIS = "⋯";
+  function updateFolderEllipsis() {
+    document.querySelectorAll(".folder-tab-label").forEach(label => {
+      if (!label.dataset.fullText) label.dataset.fullText = label.textContent;
+      const full = label.dataset.fullText;
+      label.textContent = full;
+      /* Skip labels whose container is not yet measurable (e.g. Boards screen
+         hidden on initial load). They'll be re-measured when shown. */
+      if (label.clientWidth <= 0) return;
+      /* No overflow → keep full text */
+      if (label.scrollWidth <= label.clientWidth) return;
+      /* Binary search for the longest prefix that fits with ⋯ appended */
+      let lo = 0, hi = full.length;
+      while (lo < hi) {
+        const mid = Math.ceil((lo + hi) / 2);
+        label.textContent = full.slice(0, mid).trimEnd() + FOLDER_ELLIPSIS;
+        if (label.scrollWidth <= label.clientWidth) lo = mid;
+        else hi = mid - 1;
+      }
+      label.textContent = full.slice(0, lo).trimEnd() + FOLDER_ELLIPSIS;
+    });
+  }
+  window.addEventListener("resize", updateFolderEllipsis);
+  setTimeout(updateFolderEllipsis, 0);
+
+  /* ─── Initialize ─── */
+  setEnv("desktop");
+  setScreen(SCREENS[0].id);
+  renderThemeChips();
+  renderFontChips();
+
+  /* ─── Live reload poll on design.md mtime ─── */
+  setInterval(async () => {
+    try {
+      const r = await fetch("/api/mtime", { cache: "no-store" }).then(x => x.json());
+      if (r.mtime !== INITIAL_MTIME) {
+        console.log("[design.md] changed, reloading...");
+        location.reload();
+      }
+    } catch (e) { /* network blip */ }
+  }, 1500);
+</script>
+</body>
+</html>
