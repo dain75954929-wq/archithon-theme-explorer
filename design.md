@@ -644,6 +644,77 @@ toast-exit:           "var(--motion-fast) var(--motion-ease-out)"  # fade-out
 - warning: `border-color: var(--accent-3)`
 - error: `border-color: var(--destructive)`
 
+### 8.12 Icon System ✅
+앱 전체의 모든 line icon은 단일 시스템을 따른다. 헤더 버튼·하단 nav·인라인
+icon-in-button 어디든 같은 visual weight·같은 stroke 규칙으로 렌더된다.
+
+```yaml
+# Stroke weight (모든 line icon 공통)
+icon-stroke-width:      1.5       # 전체 통일
+icon-style:             "outline / stroke-based only"
+icon-source-convention: "Feather / Lucide"
+
+# Size (위치별)
+icon-size-header:       18        # .icon-btn / .back-btn 내부 SVG
+icon-size-nav:          22        # 하단 nav 내부 SVG
+icon-size-inline:       16        # ghost-btn / 인라인 SVG
+
+# Header button frame (.icon-btn / .back-btn)
+icon-btn-size:          36        # 36×36 circle tap target
+icon-btn-bg:            transparent
+icon-btn-bg-hover:      "var(--surface)"
+icon-btn-border:        0
+icon-btn-radius:        50%
+```
+
+**SVG 작성 규칙 ✅**
+모든 아이콘 SVG는 동일한 attribute set으로 시작한다 — 인라인으로 `stroke-width`
+지정 금지 (CSS가 단독 관리).
+
+```html
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-linecap="round" stroke-linejoin="round">
+  <!-- paths only — no inline width/height/stroke-width -->
+</svg>
+```
+
+- `viewBox: 0 0 24 24` — Feather/Lucide 표준
+- `fill="none"` — outline 톤 유지 (filled icon 금지)
+- `stroke="currentColor"` — 테마/parent color 자동 상속
+- 사이즈는 CSS에서 (`.icon-btn svg { width: 18px; height: 18px; }` 등)
+- stroke-width도 CSS에서 (`stroke-width: 1.5`)
+- linecap·linejoin: `round` 고정 — 모서리 톤 일관
+
+**Character glyph 금지 ✅**
+`←`, `⌕`, `⤺`, `↗`, `⋯`, `+` 같은 유니코드 character는 icon-btn 안에서 절대
+사용하지 않는다. 이유:
+- 폰트마다 글리프 디자인이 달라 stroke weight·비율·밀도가 매번 다름
+- stroke-1.5 SVG와 같은 visual weight를 절대 못 맞춤
+- OS별 fallback 폰트에 따라 깨질 위험
+
+대체 매핑 (실제 사용 중):
+
+| 기존 글리프 | 의미 | SVG icon |
+|---|---|---|
+| `←` | back | arrow-left (line + polyline) |
+| `⌕` | search | search (circle + handle line) |
+| `⤺` | undo | rotate-counterclockwise |
+| `↗` | share / external | arrow-up-right (L-shape) |
+| `⋯` | more | more-horizontal (circle × 3, r=1.2) |
+
+**Header button frame ✅**
+`.icon-btn`과 `.back-btn`은 한 단일 selector로 합쳐 관리한다. 둘 다 같은 spec:
+- 36×36 circle, transparent bg, no border
+- hover 시에만 `var(--surface)` 배경
+- 내부 SVG는 18×18, stroke 1.5
+- transition: `var(--motion-fast) var(--motion-ease)` (배경 fade)
+
+`.hdr-spacer` (제목 우측 정렬용 빈 슬롯)는 동일한 36px 폭으로 둬서 좌우 중심
+잡힘 보장.
+
+`.hdr-text-btn` (e.g. "저장")도 같은 36px height + pill radius로 헤더 줄에
+세로 정렬 일치.
+
 ---
 
 ## 9. 결정된 사항
@@ -688,6 +759,11 @@ toast-exit:           "var(--motion-fast) var(--motion-ease-out)"  # fade-out
 | 컴포넌트 격리 정책 | **2+ 페이지 사용 시 추출 (디자인 시스템 입도는 무조건)** | (§10.4) ✅ |
 | Aesthetics Tone | **Mode별 톤 분리: Light=clear/editorial, Dark=cinematic/atmospheric** | (§4) ✅ |
 | Implementation 규칙 | **CSS variables + Inline 하이브리드 (외부 UI/CSS-in-JS 라이브러리 금지)** | (§4) ✅ |
+| Icon 형식 | **모든 icon은 stroke-based SVG (character glyph 금지)** | (§8.12) ✅ |
+| Icon Stroke Width | **1.5 — 전체 통일 (header / nav / inline 어디든)** | (§8.12) ✅ |
+| Icon Size | **header 18 / nav 22 / inline-in-button 16** | (§8.12) ✅ |
+| Icon SVG 규약 | **viewBox 24, fill=none, stroke=currentColor, linecap/join=round, 인라인 stroke-width 금지** | (§8.12) ✅ |
+| Header Button Frame | **.icon-btn = .back-btn 단일 spec: 36×36 circle, transparent, hover만 surface bg** | (§8.12) ✅ |
 
 ---
 
