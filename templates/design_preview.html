@@ -2121,12 +2121,14 @@
           </header>
           <div class="page-body">
 
-            <!-- 1. Profile photo + name + bio -->
+            <!-- 1. Profile photo + name + bio (all 4 lines driven by
+                 PROFILE_MOCK_USER via applyMockProfile; edited from
+                 Settings → 프로필 편집 / share screen pencil) -->
             <div class="profile-hero">
               <div class="profile-avatar" id="profileAvatar">DK</div>
               <div class="profile-name" id="profileName">Dain Kim</div>
               <div class="profile-username" id="profileUsername">@dain_architect</div>
-              <div class="profile-bio">건축학과 학생 · Korea University</div>
+              <div class="profile-bio" id="profileBio">건축학과 학생 · Korea University</div>
             </div>
 
             <!-- 2. Stats row (Instagram style: 보드 · 팔로워 · 팔로잉) -->
@@ -2257,10 +2259,8 @@
                 <input class="edit-input" type="text" id="editUsername" readonly />
                 <span class="edit-hint">고유 식별자 — 변경할 수 없습니다.</span>
               </label>
-              <label class="edit-field">
-                <span class="edit-label">한 줄 소개 (Bio)</span>
-                <textarea class="edit-input" id="editBio" rows="3"></textarea>
-              </label>
+              <!-- 한 줄 소개는 Role + Affiliation에서 자동 조합 (Role · Affiliation).
+                   별도 bio 필드를 두지 않아 데이터 단일 소스 보장. -->
             </form>
 
             <!-- 추가 항목: SNS / 외부 링크 / 이메일 등 명함에 함께 보여줄 부가 정보. -->
@@ -2334,7 +2334,7 @@
             <div class="settings-group">
               <button class="settings-row" type="button" data-goto="profile-edit">
                 <span class="settings-label">프로필 편집</span>
-                <span class="settings-hint">명함 정보 수정</span>
+                <span class="settings-hint">정보 수정</span>
                 <span class="settings-chevron">›</span>
               </button>
               <button class="settings-row" type="button" data-setting="theme">
@@ -2734,9 +2734,11 @@
     display_name: "Dain Kim",
     role: "Architecture Student",
     affiliation: "Korea University",
-    bio: "건축학과 학생 · Korea University",
     initials: "DK",
   };
+  /* Hero bio + card "role · affiliation" share a single source. Edit form
+     drives role/affiliation; both surfaces reflect the change.            */
+  const composeBio = (u) => [u.role, u.affiliation].filter(Boolean).join(" · ");
   /* Share URL deep-links to the user's profile tab (`/u/<id>` is the profile route
      in the SPA). Scanning the QR opens that user's profile screen. */
   const SHARE_URL_BASE = "https://architinder.app/u/";
@@ -2815,10 +2817,11 @@
   function applyMockProfile() {
     const u = PROFILE_MOCK_USER;
     const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
-    /* Profile header + hero */
+    /* Profile header + hero — bio line auto-composed from role + affiliation */
     set("profileAvatar",       u.initials);
     set("profileName",         u.display_name);
     set("profileUsername",     "@" + u.username);
+    set("profileBio",          composeBio(u));
     set("profileHeaderHandle", "@" + u.username);
     /* Business card (Share sub-screen) — both faces */
     const idStr = String(u.user_id).padStart(3, "0");
@@ -2917,7 +2920,6 @@
     set("editRole",        u.role);
     set("editAffiliation", u.affiliation);
     set("editUsername",    u.username);
-    set("editBio",         u.bio);
   }
   function saveProfileEditForm() {
     const u = PROFILE_MOCK_USER;
@@ -2925,7 +2927,6 @@
     u.display_name = get("editName")        || u.display_name;
     u.role         = get("editRole")        || u.role;
     u.affiliation  = get("editAffiliation") || u.affiliation;
-    u.bio          = get("editBio")         || u.bio;
     /* Re-derive initials from the first 2 chars of each name word */
     u.initials = u.display_name.split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
     applyMockProfile();
