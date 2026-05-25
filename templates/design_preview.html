@@ -12,6 +12,9 @@
 <link rel="stylesheet" href="https://spoqa.github.io/spoqa-han-sans/css/SpoqaHanSansNeo.css" />
 <link rel="stylesheet" href="https://webfontworld.github.io/gmarket/GmarketSans.css" />
 
+<!-- QR code generation library (used by Profile → 프로필 공유) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
 <style>
   /* ===== Tokens applied straight from design.md ===== */
   :root {
@@ -22,6 +25,15 @@
     /* derived */
     --shadow:        0 4px 24px rgba(0,0,0,0.18);
     --shadow-strong: 0 24px 60px rgba(0,0,0,0.4);
+
+    /* Letter-spacing system (pending migration into design.md §2.x).
+       Per §4 Typography 톤: "Premium · Sleek · Confident" — 자간으로 톤 만든다.
+       5 tokens cover every legitimate tracking need across the app.   */
+    --ls-tight:      -0.02em;   /* big display headlines (h1, name)             */
+    --ls-caps:        0.08em;   /* UPPERCASE labels small (12-14px)             */
+    --ls-caps-wide:   0.14em;   /* UPPERCASE caps medium (10-12px, mono meta)   */
+    --ls-caps-extra:  0.2em;    /* UPPERCASE extra-wide (9-11px, very small)    */
+    --ls-wordmark:    0.32em;   /* brand wordmark only — ARCHIBE / Archibe      */
   }
 
   /* ===== Page chrome (the preview frame stays neutral dark) ===== */
@@ -35,7 +47,7 @@
     flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
     padding-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.08);
   }
-  .brand h1 { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+  .brand h1 { font-size: 32px; font-weight: 700; letter-spacing: var(--ls-tight); line-height: 1.1; }
   .brand h1 .accent { color: #58A6FF; }
   .brand p { font-size: 13px; color: #9ca3af; margin-top: 6px; }
   .brand .meta {
@@ -67,7 +79,7 @@
   .control-label {
     flex-shrink: 0; width: 130px;
     font-size: 11px; font-weight: 600; color: #9ca3af;
-    text-transform: uppercase; letter-spacing: 0.06em;
+    text-transform: uppercase; letter-spacing: var(--ls-caps);
   }
   .control-content { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
@@ -310,7 +322,12 @@
   .stage[data-env="desktop"] .screen .page-hdr {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 32px; border-bottom: 1px solid var(--border);
-    background: var(--bg); position: sticky; top: 0; z-index: 5;
+    /* Glassmorphic per §4 Vibe — frosted background lets scrolled content
+       bleed through subtly while still anchoring the header. */
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 5;
   }
   .stage[data-env="desktop"] .screen .page-body { padding: 32px; }
 
@@ -344,7 +361,10 @@
   }
   .stage[data-env="mobile"] .screen .page-hdr {
     flex-shrink: 0; padding: 12px 20px;
-    background: var(--bg);
+    /* Glassmorphic per §4 Vibe */
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     z-index: 5;
@@ -353,7 +373,7 @@
   .stage[data-env="mobile"] .screen .nav-bar {
     flex-shrink: 0; background: var(--bg);
     border-top: 1px solid var(--border);
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(3, 1fr);
     padding: 8px 0 22px;
   }
 
@@ -363,13 +383,27 @@
 
   .page-title { font-size: 16px; font-weight: 600; color: var(--text); }
   .page-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .icon-btn {
-    width: var(--touch-target, 44px); height: var(--touch-target, 44px);
-    min-width: 36px; min-height: 36px;
+  /* Unified header icon button — used for ALL .icon-btn and .back-btn
+     occurrences across every screen header. Single source of truth for
+     header button visual weight: 36×36 circle, transparent until hover,
+     no border, 18px char glyphs OR 18px SVG @ stroke-width 1.5.        */
+  .icon-btn, .back-btn {
+    width: 36px; height: 36px;
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent;
+    border: 0;
     border-radius: 50%;
-    background: var(--surface); border: 1px solid var(--border); color: var(--text);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; cursor: pointer;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 18px; line-height: 1;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--motion-ease);
+  }
+  .icon-btn:hover, .back-btn:hover { background: var(--surface); }
+  .icon-btn svg, .back-btn svg {
+    width: 18px; height: 18px;
+    stroke-width: 1.5;
   }
 
   .nav-item {
@@ -378,13 +412,13 @@
     cursor: pointer; background: transparent; border: 0;
   }
   .nav-item.active { color: var(--accent-1); }
-  .nav-item svg { width: 22px; height: 22px; stroke-width: 1.8; }
+  .nav-item svg { width: 22px; height: 22px; stroke-width: 1.5; }
 
   /* ===== AI Search (restored: chat UI) ===== */
   .ai-greet {
     font-size: calc(var(--h2-size-mobile, 24) * 1px);
     font-weight: var(--h2-weight, 600);
-    line-height: 1.15; letter-spacing: -0.01em; margin-bottom: 8px;
+    line-height: 1.15; letter-spacing: var(--ls-tight); margin-bottom: 8px;
   }
   .stage[data-env="desktop"] .ai-greet { font-size: calc(var(--h2-size-desktop, 30) * 1px); }
   .ai-greet .accent { color: var(--accent-1); }
@@ -395,7 +429,7 @@
   }
   .section-h {
     font-size: 11px; font-weight: 600; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: var(--ls-caps); margin-bottom: 10px;
   }
   .recent-item {
     display: flex; align-items: center; gap: 10px;
@@ -540,7 +574,7 @@
     color: rgba(255,255,255,0.5);
     font-size: 10px; font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--ls-caps);
     margin-bottom: 3px;
     /* Meta labels stay in default system font regardless of theme font choice */
     font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -664,11 +698,11 @@
   }
 
   /* ===== Persona (restored: full report) ===== */
-  .persona-eyebrow { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .persona-eyebrow { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: var(--ls-caps-wide); margin-bottom: 6px; }
   .persona-title {
     font-size: calc(var(--h1-size-mobile, 32) * 1px);
     font-weight: var(--h1-weight, 700);
-    line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 20px;
+    line-height: 1.1; letter-spacing: var(--ls-tight); margin-bottom: 20px;
   }
   .stage[data-env="desktop"] .persona-title { font-size: calc(var(--h1-size-desktop, 48) * 1px); }
   .persona-title .accent { color: var(--accent-1); }
@@ -720,6 +754,927 @@
     border-radius: calc(var(--radius-md, 12) * 1px);
     background: transparent; color: var(--text);
     font-size: 14px; font-weight: 500; cursor: pointer;
+  }
+
+  /* ===== Profile screen (rebuilt) =====
+     Hero · 공유(inline QR) · 설정 · 업로드 · 팔로잉 · 팔로워 · 보드(공개/비공개 토글) */
+  .profile-hero {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 6px;
+    padding: 8px 0 18px;
+  }
+  .profile-avatar {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff; font-size: 32px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0.02em;
+  }
+  .profile-name {
+    font-size: 22px; font-weight: 700; color: var(--text);
+    margin-top: 10px;
+  }
+  .profile-username {
+    font-size: 13px; color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .profile-bio {
+    font-size: 14px; color: var(--text-muted);
+    max-width: 320px; margin-top: 2px; line-height: 1.5;
+  }
+
+  /* Profile sections — recurring vertical block pattern */
+  .profile-section { margin-bottom: 24px; }
+  .profile-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: var(--ls-caps);
+    margin-bottom: 10px; padding: 0 2px;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .profile-section-count {
+    font-size: 11px; font-weight: 500; color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Ghost button per design.md §8.3 */
+  .ghost-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 16px; min-height: 44px;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    font-size: 14px; font-weight: 500; font-family: inherit;
+    cursor: pointer;
+    transition: transform var(--motion-fast) var(--motion-ease),
+                border-color var(--motion-fast) var(--motion-ease);
+  }
+  .ghost-btn:hover { transform: translateY(-3px); border-color: var(--border-soft); }
+  .ghost-btn svg { width: 16px; height: 16px; stroke-width: 1.5; }
+
+  /* ─── Profile header: actions group (share + settings + ⋯) ─── */
+  .hdr-actions { display: inline-flex; align-items: center; gap: 4px; }
+  /* Icon size + stroke-width come from the unified .icon-btn rule above. */
+
+  /* ─── Stats row (Instagram-style: 보드 · 팔로워 · 팔로잉) ─── */
+  .profile-stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .profile-stat-cell {
+    background: transparent; border: 0; padding: 12px 6px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    cursor: pointer; font-family: inherit; color: var(--text);
+    transition: background var(--motion-fast) var(--motion-ease);
+  }
+  .profile-stat-cell:last-child { border-right: 0; }
+  .profile-stat-cell:hover { background: var(--surface-2); }
+  .profile-stat-cell .val {
+    font-size: 18px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .profile-stat-cell .lbl {
+    font-size: 11px; font-weight: 500; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: var(--ls-caps);
+  }
+
+  /* ─── Sub-screen header: back button + centered-ish title ─── */
+  .hdr-back-group {
+    display: flex; align-items: center; gap: 10px; min-width: 0;
+  }
+  /* Hdr-spacer matches the unified header-button width so the title sits
+     visually centered when the right side has no icon-btn. */
+  .hdr-spacer { width: 36px; }
+  /* .back-btn rules are folded into the unified .icon-btn block above. */
+  .screen-hint {
+    text-align: center;
+    font-size: 12px; color: var(--text-muted);
+    margin-top: 16px;
+  }
+
+  /* ─── 프로필 공유 → 명함 (business card / carte de visite) ───
+     White paper, black ink, monospace details. Two-faced: front holds
+     the real QR + identity, back holds a decorative fake QR (stamp).
+     Click anywhere on the card → 3D rotateY flip (design.md §8.6).
+     Renders monochrome regardless of theme — it IS a physical card.
+     Reference: Pinterest minimalist business-card pin.                */
+  /* Card metrics — match standard portrait business-card proportions but
+     scaled for mobile preview. 5:7 keeps it noticeably portrait without
+     looking too tall. */
+  .business-card-stage {
+    perspective: 1400px;
+    width: 100%; max-width: 340px;
+    margin: 8px auto 16px;
+    aspect-ratio: 5 / 7;
+  }
+  .business-card-flip {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform var(--motion-flip) var(--motion-ease);
+    cursor: pointer;
+  }
+  .business-card-flip.is-flipped { transform: rotateY(180deg); }
+
+  /* Each face — letterpress white card with crisp 1px hairline border.
+     Subtle paper feel comes from the stacked shadow + slightly off-pure
+     white. */
+  .business-card {
+    position: absolute; inset: 0;
+    background: #FAFAF7;            /* off-white, cooler than #FFFFFF — paper */
+    color: #0A0A0A;
+    border: 1px solid #D8D8D5;
+    border-radius: 4px;             /* tight corner — printed card, not iOS app */
+    padding: 26px 24px;
+    box-shadow:
+      0  1px  0   rgba(0,0,0,0.05) inset,            /* top inner highlight */
+      0 12px 28px rgba(0,0,0,0.18),
+      0 24px 56px rgba(0,0,0,0.18);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .business-card.bc-back {
+    transform: rotateY(180deg);
+  }
+  /* Flip affordance — small, dim, mono */
+  .business-card .bc-flip-hint {
+    position: absolute; top: 12px; right: 14px;
+    font-size: 13px; line-height: 1;
+    color: #BBB;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* ── Shared wordmark (front + back top) ── */
+  .business-card .bc-head { /* no styles — exists only as a positioning anchor */ }
+  .business-card .bc-wordmark {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; font-weight: 700;
+    letter-spacing: var(--ls-wordmark);
+    color: #0A0A0A;
+    line-height: 1;
+  }
+
+  .stage[data-env="mobile"] .business-card-stage { max-width: 100%; }
+
+  /* ─────────────────────────────────────────────────────────────
+     FRONT v3 — minimalist letterpress
+     justify-content: space-between auto-distributes head/body/foot
+     to top/middle/bottom. The middle (.bc-identity) ends up
+     visually centered in the card.
+     ───────────────────────────────────────────────────────────── */
+  .business-card.bc-front {
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+  }
+  .bc-front .bc-identity {
+    /* sits in the visual middle by virtue of space-between */
+  }
+  .bc-front .bc-name {
+    font-size: 32px; font-weight: 700;
+    line-height: 1;
+    letter-spacing: var(--ls-tight);
+    color: #0A0A0A;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .bc-front .bc-role {
+    font-size: 13px; font-weight: 500;
+    color: #2A2A2A;
+    line-height: 1.4;
+  }
+  .bc-front .bc-affiliation {
+    font-size: 13px; font-weight: 400;
+    color: #888;
+    line-height: 1.4;
+  }
+  /* Compact single-row footer: handle stack on the left, tiny QR on the right */
+  .bc-front .bc-foot {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 14px;
+  }
+  .bc-front .bc-contact {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    min-width: 0;
+  }
+  .bc-front .bc-handle {
+    font-size: 11px; font-weight: 600;
+    color: #0A0A0A;
+    line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bc-front .bc-url {
+    font-size: 9px; font-weight: 500;
+    color: #888;
+    line-height: 1.3;
+    margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .bc-front .bc-qr {
+    flex-shrink: 0;
+  }
+  .bc-front .bc-qr canvas {
+    display: block;
+    width: 72px; height: 72px;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     BACK v3 — fully centered stamp composition
+     Wordmark top, dead-center QR + member meta, tiny footer caption.
+     Both axes centered for a "seal" / certificate feel.
+     ───────────────────────────────────────────────────────────── */
+  .business-card.bc-back {
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    text-align: center;
+  }
+  .bc-back .bc-head { text-align: left; }
+  .bc-back .bc-back-body {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px;
+  }
+  .bc-back .bc-back-qr {
+    width: 144px; height: 144px;
+    padding: 8px;
+    background: #FFFFFF;
+    border: 1px solid #D8D8D5;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .bc-back .bc-back-qr svg {
+    width: 100%; height: 100%;
+    display: block;
+    fill: #0A0A0A;
+    shape-rendering: crispEdges;
+  }
+  .bc-back .bc-back-no {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 16px; font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: #0A0A0A;
+    margin-top: 4px;
+  }
+  .bc-back .bc-back-est {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: var(--ls-caps-wide);
+    color: #888;
+    text-transform: uppercase;
+  }
+  .bc-back .bc-back-foot {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: var(--ls-caps-extra);
+    color: #888;
+    text-transform: uppercase;
+  }
+  /* Legacy single-face .bc-* rules removed — replaced by .bc-front/.bc-back
+     scoped rules in the v2 block above. */
+  .stage[data-env="mobile"] .business-card-stage { max-width: 100%; }
+
+  /* Legacy back-face rules removed — see .bc-back .bc-back-body / .bc-back-no /
+     .bc-back-est / .bc-back-foot in the v3 block above. */
+
+  .share-actions {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-top: 20px;
+  }
+
+  /* ─── 명함 수정 폼 ─── */
+  /* Text action button in header (e.g. "저장") — same 36px height as
+     other header buttons so they vertically align across screens. */
+  .hdr-text-btn {
+    height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0;
+    color: var(--accent-1); font-family: inherit;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; padding: 0 10px;
+    border-radius: 18px;
+    transition: background var(--motion-fast) var(--motion-ease),
+                opacity var(--motion-fast) var(--motion-ease);
+  }
+  .hdr-text-btn:hover { background: var(--surface); opacity: 0.85; }
+
+  .edit-form {
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .edit-field {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .edit-label {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: var(--ls-caps);
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .edit-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    padding: 12px 14px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: var(--font-stack);
+    transition: border-color var(--motion-fast) var(--motion-ease);
+  }
+  .edit-input:focus {
+    outline: none;
+    border-color: var(--accent-1);
+  }
+  .edit-input[readonly] {
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+  textarea.edit-input {
+    resize: vertical;
+    min-height: 80px;
+    line-height: 1.5;
+  }
+  .edit-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* ─── Edit screen: 추가 항목 섹션 ─── */
+  .edit-section {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .edit-section-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .edit-section-title {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: var(--ls-caps);
+    color: var(--text);
+    text-transform: uppercase;
+  }
+  .edit-section-hint {
+    font-size: 11px; color: var(--text-muted);
+  }
+  .edit-add-items {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .stage[data-env="mobile"] .edit-add-items { grid-template-columns: 1fr; }
+  .edit-add-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 14px; min-height: 44px;
+    background: transparent;
+    color: var(--text);
+    border: 1px dashed var(--border-soft);
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--motion-fast) var(--motion-ease),
+                background var(--motion-fast) var(--motion-ease);
+  }
+  .edit-add-chip:hover {
+    border-color: var(--accent-1);
+    background: color-mix(in srgb, var(--accent-1) 6%, transparent);
+  }
+  .edit-add-chip .add-plus {
+    color: var(--text-muted); font-weight: 400;
+    font-size: 14px; line-height: 1;
+  }
+
+  /* ─── 프로필 공유 (inline QR card — legacy, kept for reference) ─── */
+  .share-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-lg, 20) * 1px);
+    padding: 20px 18px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .share-card.share-card-wide { padding: 28px 20px; gap: 16px; }
+  .share-card-name {
+    font-size: 15px; font-weight: 600; color: var(--text);
+  }
+  .qr-frame {
+    background: #fff;          /* white background required for camera contrast */
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    padding: 12px;
+    display: flex; align-items: center; justify-content: center;
+    width: fit-content;
+    border: 1px solid var(--border);
+  }
+  .qr-frame canvas { display: block; }
+  .share-card-url {
+    font-size: 11px; color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .share-add-item {
+    width: 100%; margin-top: 4px;
+    border-style: dashed;
+    color: var(--text-muted);
+  }
+
+  /* ─── 설정 group ─── */
+  .settings-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-lg, 20) * 1px);
+    overflow: hidden;
+  }
+  .settings-row {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 16px;
+    background: transparent; border: 0; border-bottom: 1px solid var(--border);
+    font-size: 14px; text-align: left;
+    color: var(--text); font-family: inherit;
+    cursor: pointer;
+    transition: background var(--motion-fast) var(--motion-ease);
+  }
+  .settings-row:last-child { border-bottom: 0; }
+  .settings-row:hover { background: var(--surface-2); }
+  .settings-label { color: var(--text); font-weight: 500; flex: 1; }
+  .settings-hint  { color: var(--text-muted); font-size: 12px; }
+  .settings-chevron { color: var(--text-dim); font-size: 18px; line-height: 1; }
+
+  /* ─── 프로젝트 업로드 (primary CTA per design.md §8.1) ─── */
+  .primary-cta {
+    width: 100%;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px 16px; min-height: 48px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: #fff; border: 0;
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: transform var(--motion-normal) var(--motion-ease),
+                box-shadow var(--motion-slow) var(--motion-ease-out);
+  }
+  .primary-cta:hover { transform: translateY(-3px); }
+  .primary-cta:active {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-1) 28%, transparent);
+    transition: transform var(--motion-normal) var(--motion-ease), box-shadow 0s;
+  }
+
+  /* ─── 팔로잉 / 팔로워 list ─── */
+  .follow-list {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-lg, 20) * 1px);
+    overflow: hidden;
+  }
+  .follow-item {
+    width: 100%;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: transparent; border: 0; border-bottom: 1px solid var(--border);
+    text-align: left; cursor: pointer; font-family: inherit;
+    transition: background var(--motion-fast) var(--motion-ease);
+  }
+  .follow-item:last-child { border-bottom: 0; }
+  .follow-item:hover { background: var(--surface-2); }
+  .follow-item:focus-visible { outline: 2px solid var(--accent-1); outline-offset: -2px; }
+  .follow-avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent-3));
+    color: #fff; font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0.02em;
+  }
+  .follow-info { flex: 1; min-width: 0; }
+  .follow-name { font-size: 14px; font-weight: 600; color: var(--text);
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .follow-meta { font-size: 12px; color: var(--text-muted); margin-top: 1px;
+                 overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .follow-chevron { color: var(--text-dim); font-size: 18px; line-height: 1; flex-shrink: 0; }
+  .follow-empty {
+    padding: 24px 14px; text-align: center;
+    font-size: 13px; color: var(--text-muted);
+  }
+
+  /* ═════════════════════════════════════════════════════════════════
+     보드 list — 3 visual variants (Archibe editorial/portfolio tone)
+     ─────────────────────────────────────────────────────────────────
+     References pull from the user's Pinterest mood board:
+       - Webflow black/white minimal magazine templates
+       - Post-Digital Publishing Archive (P—DPA) typographic grid
+       - Typewolf-recognized "Selected Projects" all-typography poster
+       - IKEA assembly-manual numbered instructional clarity
+     Common move across all 3: separate image from text (no overlay
+     reading), strong typography, monospace meta, generous whitespace.
+     ═════════════════════════════════════════════════════════════════ */
+  .board-list { display: flex; flex-direction: column; gap: 28px; }
+
+  /* ── Visibility pill — appears in every variant ── */
+  .b-visibility {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 10px; font-weight: 500;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: var(--ls-caps); text-transform: uppercase;
+    cursor: pointer;
+  }
+  .b-visibility .dot {
+    width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim);
+  }
+  .b-visibility[data-state="public"] {
+    color: var(--accent-1);
+    border-color: color-mix(in srgb, var(--accent-1) 40%, var(--border));
+  }
+  .b-visibility[data-state="public"] .dot {
+    background: var(--accent-1); box-shadow: 0 0 4px var(--accent-1);
+  }
+  /* Variant used on dark image overlay (Magazine top corner) */
+  .b-visibility.on-dark {
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(12px);             /* unified Glassmorphic standard */
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.9);
+  }
+  .b-visibility.on-dark[data-state="public"] { color: #7EE787; border-color: rgba(126,231,135,0.5); }
+  .b-visibility.on-dark[data-state="public"] .dot { background: #7EE787; box-shadow: 0 0 4px #7EE787; }
+
+  /* ═══ A) MAGAZINE ════════════════════════════════════════════════
+     Architectural Digest / monograph: hero image on top (4:3) + caption
+     card on bottom in light surface. Text always on surface (no overlay
+     readability issues). Big serif-feeling title, monospace meta line. */
+  .board-magazine {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-md, 12) * 1px);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform var(--motion-fast) var(--motion-ease),
+                border-color var(--motion-fast) var(--motion-ease);
+  }
+  .board-magazine:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-soft);
+  }
+  .board-magazine .mag-cover {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background-size: cover; background-position: center;
+    background-color: var(--surface-2);
+  }
+  .board-magazine .mag-cover-top {
+    position: absolute; top: 12px; left: 14px; right: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    color: #fff;
+    font-size: 10px; font-weight: 600; letter-spacing: var(--ls-caps-extra);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+  .board-magazine .mag-caption {
+    padding: 20px 18px 18px;
+  }
+  /* hierarchy: 제목 → 키워드 → 요약 → 룰 → 프로젝트 수&날짜 */
+  .board-magazine .mag-title {
+    font-size: 22px; font-weight: 600; line-height: 1.2;
+    letter-spacing: var(--ls-tight);
+    color: var(--text);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .board-magazine .mag-keyword {
+    font-size: 11px; font-weight: 600; letter-spacing: var(--ls-caps-wide);
+    color: var(--text-muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .board-magazine .mag-overview {
+    font-size: 13px; color: var(--text-muted);
+    line-height: 1.55;
+    margin-bottom: 18px;
+    /* no truncation — full overview shown, wraps onto multiple lines */
+  }
+  .board-magazine .mag-rule {
+    height: 1px; background: var(--border);
+    margin: 0 0 12px;
+  }
+  .board-magazine .mag-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--text-muted);
+    font-size: 10px; font-weight: 600; letter-spacing: var(--ls-caps-wide);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: uppercase;
+  }
+
+  /* ═══ B) LEDGER ═════════════════════════════════════════════════
+     Typewolf "Selected Projects" / P—DPA: pure typography, massive
+     display title, tons of whitespace. Images are tertiary — just a
+     small row of sharp-cornered thumbnails. No card chrome.          */
+  .board-ledger {
+    padding: 32px 4px 36px;
+    border-top: 2px solid var(--text);   /* solid heavy top rule — archival */
+    cursor: pointer;
+  }
+  .board-ledger .led-eyebrow {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    margin-bottom: 28px;
+    color: var(--text-muted);
+    font-size: 11px; font-weight: 600; letter-spacing: var(--ls-caps-extra);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: uppercase;
+  }
+  .board-ledger .led-no {
+    color: var(--text); font-size: 13px;
+  }
+  .board-ledger .led-title {
+    font-size: 38px; font-weight: 700; line-height: 1.02;
+    letter-spacing: var(--ls-tight);
+    color: var(--text);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    max-width: 14ch;
+  }
+  .stage[data-env="mobile"] .board-ledger .led-title { font-size: 32px; }
+  .board-ledger .led-summary {
+    font-size: 14px; color: var(--text-muted);
+    margin-bottom: 18px;
+    max-width: 44ch;
+  }
+  .board-ledger .led-overview {
+    font-size: 14px; line-height: 1.6; color: var(--text);
+    margin-bottom: 28px;
+    max-width: 56ch;
+  }
+  /* Thumb row: fits as many 64px thumbs as the container width allows;
+     overflow:hidden visually crops the rest. JS renders up to project_count
+     (capped by photos available). Result: small board (5 projects) shows 5
+     thumbs; large board (14 projects) shows however many fit in the row.   */
+  .board-ledger .led-thumbs {
+    display: flex; flex-wrap: nowrap; gap: 6px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .board-ledger .led-thumbs > div {
+    flex: 0 0 64px;
+    height: 64px;
+    background-size: cover; background-position: center;
+    background-color: var(--surface-2);
+    /* no border-radius — sharp archival rectangle */
+  }
+  .board-ledger .led-meta {
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--text-muted);
+    font-size: 11px; font-weight: 600; letter-spacing: var(--ls-caps-wide);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: uppercase;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .board-ledger .led-count { color: var(--text); }
+  .board-ledger .led-meta-right { display: inline-flex; align-items: center; gap: 14px; }
+
+  /* ═══ C) STRIP (IKEA INSTRUCTIONAL) ══════════════════════════════
+     Inspired by IKEA assembly manuals: numbered header bar, then a
+     full-width 3-photo strip (numbered above each), then a clean meta
+     row. Highly scannable, instructional clarity, no fluff.            */
+  .board-strip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius-sm, 8) * 1px);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color var(--motion-fast) var(--motion-ease);
+  }
+  .board-strip:hover { border-color: var(--border-soft); }
+  .board-strip .strip-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .board-strip .strip-no {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--text);
+    color: var(--text);
+    font-size: 12px; font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: 0;
+  }
+  .board-strip .strip-title {
+    flex: 1; min-width: 0;
+    font-size: 15px; font-weight: 600; line-height: 1.25;
+    color: var(--text);
+    letter-spacing: var(--ls-tight);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .board-strip .strip-photos {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);            /* shows as hairlines between photos */
+  }
+  .board-strip .strip-photo {
+    aspect-ratio: 4 / 3;
+    background-size: cover; background-position: center;
+    background-color: var(--surface-2);
+  }
+  .board-strip .strip-meta {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 12px 16px;
+  }
+  .board-strip .strip-summary {
+    color: var(--text); font-size: 13px; font-weight: 500;
+    line-height: 1.45;
+    /* no truncation — wrap onto multiple lines */
+  }
+  .board-strip .strip-stats {
+    color: var(--text-muted);
+    font-size: 11px; font-weight: 600; letter-spacing: var(--ls-caps-wide);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: uppercase;
+  }
+
+  /* ═══ D) INDEX (TABULAR ARCHIVE) ═════════════════════════════════
+     Awwwards/pricing-page minimalism: all boards as a single tabular
+     list. Row per board, columns: №, name+summary, projects, date,
+     visibility. Hairline rules between rows, mono numerals, hover bg.
+     Fundamentally different paradigm — collection-level view rather
+     than per-card view. Highest density, all-at-once scanning.        */
+  .board-index {
+    width: 100%;
+    border-top: 2px solid var(--text);     /* heavy archival top rule */
+    border-bottom: 2px solid var(--text);
+  }
+  .board-index .bi-header,
+  .board-index .bi-row {
+    display: grid;
+    grid-template-columns: 44px 1fr 64px 96px 88px;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .board-index .bi-row:last-child { border-bottom: 0; }
+  /* Mobile is too narrow for a 5-column tabular grid.
+     Instead: hide the header (rows are self-explanatory once stacked) and
+     reshape each row into a 3-line block — title/status on top, keyword
+     full-width in the middle, project count + date at the bottom.
+     Uses display:contents on .bi-col-name so the inner title and keyword
+     spans participate directly in the row's grid. */
+  .stage[data-env="mobile"] .board-index .bi-header { display: none; }
+  .stage[data-env="mobile"] .board-index {
+    border-top-width: 1px;     /* lighten heavy archival rules on phone */
+    border-bottom-width: 1px;
+  }
+  .stage[data-env="mobile"] .board-index .bi-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    grid-template-areas:
+      "no   title    status"
+      "ind  keyword  keyword"
+      "ind  proj     date";
+    column-gap: 10px;
+    row-gap: 4px;
+    padding: 14px 10px;
+    align-items: start;
+  }
+  /* Clear desktop's per-column center alignment so grid-area drives placement */
+  .stage[data-env="mobile"] .board-index .bi-row > *,
+  .stage[data-env="mobile"] .board-index .bi-row .bi-name,
+  .stage[data-env="mobile"] .board-index .bi-row .bi-summary {
+    justify-self: unset; text-align: unset;
+  }
+  .stage[data-env="mobile"] .board-index .bi-col-no {
+    grid-area: no; padding-top: 1px;
+    /* color + weight inherited from the unified rule above */
+  }
+  /* Lift title + keyword spans up into the row's grid */
+  .stage[data-env="mobile"] .board-index .bi-col-name { display: contents; }
+  .stage[data-env="mobile"] .board-index .bi-name {
+    grid-area: title;
+    /* keep nowrap + ellipsis — title is the identifier */
+  }
+  .stage[data-env="mobile"] .board-index .bi-summary {
+    grid-area: keyword; padding-top: 2px;
+    /* no truncation — wraps as needed */
+  }
+  .stage[data-env="mobile"] .board-index .bi-col-vis {
+    grid-area: status; justify-self: end;
+  }
+  .stage[data-env="mobile"] .board-index .bi-col-proj {
+    grid-area: proj; justify-self: start; padding-top: 6px;
+    /* color + weight inherited from the unified rule above */
+  }
+  .stage[data-env="mobile"] .board-index .bi-col-proj::after {
+    content: " Proj.";
+    font-weight: 500;
+  }
+  .stage[data-env="mobile"] .board-index .bi-col-date {
+    grid-area: date; justify-self: end; padding-top: 6px;
+    /* override the original "hide on mobile" rule (deleted below) */
+  }
+
+  /* ───── Unified body typography ─────
+     Same font (sans, --font-stack) and same size (13px) across №,
+     projects, date, status columns. Title/keyword inside the Name
+     column keep their own hierarchy (15px name + 12px keyword). */
+  .board-index .bi-header,
+  .board-index .bi-row {
+    font-family: var(--font-stack);
+    font-size: 13px;
+    color: var(--text);
+  }
+  /* All cells centered by default; Name cell overrides to left below. */
+  .board-index .bi-col-no,
+  .board-index .bi-col-proj,
+  .board-index .bi-col-date,
+  .board-index .bi-col-vis {
+    text-align: center;
+    justify-self: center;
+  }
+
+  .board-index .bi-header {
+    padding-top: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--text);  /* darker rule under header */
+    color: var(--text-muted);
+    font-weight: 600; letter-spacing: var(--ls-caps-wide);
+    text-transform: uppercase;
+  }
+
+  .board-index .bi-row {
+    background: transparent; border-left: 0; border-right: 0; border-top: 0;
+    text-align: left;
+    cursor: pointer; width: 100%;
+    transition: background var(--motion-fast) var(--motion-ease);
+  }
+  .board-index .bi-row:hover { background: var(--surface); }
+
+  /* All peer metadata columns (№, Proj., Date) share the SAME color +
+     weight + size. They're all secondary data — only the title block
+     (.bi-name) and the visibility pill should stand apart in color. */
+  .board-index .bi-col-no,
+  .board-index .bi-col-proj,
+  .board-index .bi-col-date {
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* Name column = title + keyword stack, left-aligned (only column that wraps) */
+  .board-index .bi-col-name {
+    min-width: 0;
+    text-align: left;
+    justify-self: stretch;
+  }
+  .board-index .bi-name {
+    display: block;
+    font-size: 15px; font-weight: 600; line-height: 1.3;
+    letter-spacing: var(--ls-tight);
+    color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .board-index .bi-summary {
+    display: block; margin-top: 3px;
+    font-size: 12px; line-height: 1.4;
+    color: var(--text-muted);
+    /* no truncation — keyword wraps so all text is visible */
+  }
+
+  /* Visibility pill stays its own pill style but a touch smaller */
+  .board-index .bi-col-vis .b-visibility {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+  /* Mobile: pill stays full (label visible) since status column is now auto-width */
+
+  /* The original §8.7 .folder-card / .visibility-toggle CSS below is kept
+     for archival purposes but no longer used inside Profile.            */
+
+  /* 공개/비공개 pill toggle (lives inside .folder-meta on the right side) */
+  .visibility-toggle {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-muted); font-size: 11px; font-weight: 500;
+    font-family: inherit; cursor: pointer;
+    transition: border-color var(--motion-fast) var(--motion-ease),
+                color var(--motion-fast) var(--motion-ease);
+  }
+  .visibility-toggle .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim);
+    transition: background var(--motion-fast) var(--motion-ease);
+  }
+  .visibility-toggle[data-state="public"] {
+    color: var(--accent-1);
+    border-color: color-mix(in srgb, var(--accent-1) 40%, var(--border));
+  }
+  .visibility-toggle[data-state="public"] .dot {
+    background: var(--accent-1); box-shadow: 0 0 4px var(--accent-1);
   }
 
   /* ===== Boards: real folder shape (SVG tab + body) ===== */
@@ -969,8 +1924,19 @@
         <button class="seg-tab" data-env="mobile">📱 Mobile</button>
       </div>
       <span style="font-size:11px; color:#6b7280; margin-left:12px;">
-        화면 전환은 미리보기 내 <strong style="color:#9ca3af;">Search · Discover · Boards · Profile</strong> 네비를 직접 클릭하세요
+        화면 전환은 미리보기 내 <strong style="color:#9ca3af;">Search · Discover · Profile</strong> 네비를 직접 클릭하세요
       </span>
+    </div>
+  </div>
+  <div class="control-row">
+    <div class="control-label">Board Style<span class="override-badge">profile</span></div>
+    <div class="control-content">
+      <div class="seg-tabs">
+        <button class="seg-tab active" data-board-style="magazine">Magazine</button>
+        <button class="seg-tab" data-board-style="ledger">Ledger</button>
+        <button class="seg-tab" data-board-style="strip">Photo Strip</button>
+        <button class="seg-tab" data-board-style="index">Index</button>
+      </div>
     </div>
   </div>
 </div>
@@ -992,10 +1958,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
           <span>Discover</span>
         </button>
-        <button class="nav-item" data-nav="boards">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
-          <span>Boards</span>
-        </button>
         <button class="nav-item" data-nav="profile">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>
           <span>Profile</span>
@@ -1007,7 +1969,12 @@
         <div class="screen-instance active" data-screen="ai-search">
           <header class="page-hdr">
             <div><div class="page-title">ArchiTinder AI</div><div class="page-sub">Discovery · round 1</div></div>
-            <button class="icon-btn">⌕</button>
+            <button class="icon-btn" type="button" aria-label="검색 옵션">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
           </header>
           <div class="page-body" style="display:flex; flex-direction:column; height:100%;">
             <div class="ai-greet">Find your <span class="accent">taste</span>.</div>
@@ -1037,7 +2004,12 @@
         <div class="screen-instance" data-screen="discovery">
           <header class="page-hdr">
             <div><div class="page-title">Museum References</div><div class="page-sub">Based on your taste</div></div>
-            <button class="icon-btn">⤺</button>
+            <button class="icon-btn" type="button" aria-label="이전 카드 되돌리기">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="1 4 1 10 7 10"/>
+                <path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+              </svg>
+            </button>
           </header>
           <div class="page-body" style="display:flex; flex-direction:column; height:100%;">
             <div class="discovery-progress">
@@ -1085,7 +2057,12 @@
         <div class="screen-instance" data-screen="persona">
           <header class="page-hdr">
             <div><div class="page-title">Your Architecture Persona</div><div class="page-sub">Analysis Complete</div></div>
-            <button class="icon-btn">↗</button>
+            <button class="icon-btn" type="button" aria-label="공유">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 17L17 7"/>
+                <path d="M7 7h10v10"/>
+              </svg>
+            </button>
           </header>
           <div class="page-body">
             <div class="persona-eyebrow">Your taste is found</div>
@@ -1107,154 +2084,280 @@
           </div>
         </div>
 
-        <!-- ===== Boards (folder tab redesign — SVG tab + new content order) ===== -->
-        <div class="screen-instance" data-screen="boards">
+<!-- ===== Boards screen removed — content absorbed into Profile → 보드 section ===== -->
+        <!-- ===== Profile main (header + 4 quick-action buttons + upload + boards) =====
+             Spec: 프로필 공유 / 팔로잉 / 팔로워 / 설정 are individual buttons that push
+             into dedicated sub-screens (profile-share, profile-following, etc.).
+             Mock data hardcoded for preview. In production wire to Django:
+             - Current user:  GET /api/v1/auth/me/
+             - Boards:        GET /api/v1/users/<id>/boards/   (backend endpoint pending)
+             - Following:     GET /api/v1/users/<id>/following/ (pending)
+             - Followers:     GET /api/v1/users/<id>/followers/ (pending)
+             ============================================================== -->
+        <div class="screen-instance" data-screen="profile">
           <header class="page-hdr">
-            <div><div class="page-title">Folders</div><div class="page-sub">6 collections</div></div>
-            <button class="icon-btn">+</button>
+            <div><div class="page-title">Profile</div><div class="page-sub" id="profileHeaderHandle">@dain_architect</div></div>
+            <div class="hdr-actions">
+              <button class="icon-btn" type="button" data-goto="profile-share" title="프로필 공유" aria-label="프로필 공유">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="6" cy="12" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="18" cy="18" r="3"/>
+                  <path d="M8.6 10.5l6.8-3M8.6 13.5l6.8 3"/>
+                </svg>
+              </button>
+              <button class="icon-btn" type="button" data-goto="profile-settings" title="설정" aria-label="설정">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                </svg>
+              </button>
+              <button class="icon-btn" type="button" title="더보기" aria-label="더보기">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="5"  cy="12" r="1.2"/>
+                  <circle cx="12" cy="12" r="1.2"/>
+                  <circle cx="19" cy="12" r="1.2"/>
+                </svg>
+              </button>
+            </div>
           </header>
           <div class="page-body">
-            <div class="folder-grid">
-              <div class="folder-card">
-                <div class="folder-tab-wrap">
-                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
-                  </svg>
-                  <span class="folder-tab-label" title="Graduation Project Reference Pack 2026">Graduation Project Reference Pack 2026</span>
-                </div>
-                <div class="folder-body">
-                  <p class="folder-overview">Final studio submission focusing on contemporary art spaces with permeable boundaries between gallery and city.</p>
-                  <p class="folder-summary">Museums · cultural spaces · permeable boundaries</p>
-                  <div class="folder-divider"></div>
-                  <div class="folder-thumbs">
-                    <div class="folder-thumb"></div>
-                    <div class="folder-thumb t2"></div>
-                    <div class="folder-thumb t3"></div>
-                  </div>
-                  <div class="folder-meta">
-                    <span class="count">14 projects</span>
-                    <span class="date">2026.03.14</span>
-                  </div>
-                </div>
-              </div>
 
-              <div class="folder-card alt-1">
-                <div class="folder-tab-wrap">
-                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
-                  </svg>
-                  <span class="folder-tab-label">Museum References</span>
-                </div>
-                <div class="folder-body">
-                  <p class="folder-overview">Curated examples of restraint and atmosphere in museum architecture, focused on light and material.</p>
-                  <p class="folder-summary">SANAA · Zumthor · Ando</p>
-                  <div class="folder-divider"></div>
-                  <div class="folder-thumbs">
-                    <div class="folder-thumb"></div>
-                    <div class="folder-thumb t2"></div>
-                    <div class="folder-thumb t3"></div>
-                  </div>
-                  <div class="folder-meta">
-                    <span class="count">8 projects</span>
-                    <span class="date">2026.04.02</span>
-                  </div>
-                </div>
-              </div>
+            <!-- 1. Profile photo + name + bio -->
+            <div class="profile-hero">
+              <div class="profile-avatar" id="profileAvatar">DK</div>
+              <div class="profile-name" id="profileName">Dain Kim</div>
+              <div class="profile-username" id="profileUsername">@dain_architect</div>
+              <div class="profile-bio">건축학과 학생 · Korea University</div>
+            </div>
 
-              <div class="folder-card alt-2">
-                <div class="folder-tab-wrap">
-                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
-                  </svg>
-                  <span class="folder-tab-label">Brutalist Civic</span>
-                </div>
-                <div class="folder-body">
-                  <p class="folder-overview">Concrete-led public buildings exploring weight, light, and texture as a civic gesture.</p>
-                  <p class="folder-summary">Raw concrete · civic presence</p>
-                  <div class="folder-divider"></div>
-                  <div class="folder-thumbs">
-                    <div class="folder-thumb"></div>
-                    <div class="folder-thumb t2"></div>
-                    <div class="folder-thumb t3"></div>
-                  </div>
-                  <div class="folder-meta">
-                    <span class="count">5 projects</span>
-                    <span class="date">2026.04.20</span>
-                  </div>
-                </div>
-              </div>
+            <!-- 2. Stats row (Instagram style: 보드 · 팔로워 · 팔로잉) -->
+            <div class="profile-stats-row" id="profileStatsRow">
+              <button class="profile-stat-cell" type="button" data-scroll-to="boardList">
+                <span class="val" id="statsBoardsCount">0</span>
+                <span class="lbl">보드</span>
+              </button>
+              <button class="profile-stat-cell" type="button" data-goto="profile-followers">
+                <span class="val" id="statsFollowersCount">0</span>
+                <span class="lbl">팔로워</span>
+              </button>
+              <button class="profile-stat-cell" type="button" data-goto="profile-following">
+                <span class="val" id="statsFollowingCount">0</span>
+                <span class="lbl">팔로잉</span>
+              </button>
+            </div>
 
-              <div class="folder-card alt-3">
-                <div class="folder-tab-wrap">
-                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
-                  </svg>
-                  <span class="folder-tab-label">Boutique Hospitality</span>
-                </div>
-                <div class="folder-body">
-                  <p class="folder-overview">Hotels and lodgings that emphasise material warmth and craft detailing at a human scale.</p>
-                  <p class="folder-summary">Small hotels · intimate scale</p>
-                  <div class="folder-divider"></div>
-                  <div class="folder-thumbs">
-                    <div class="folder-thumb"></div>
-                    <div class="folder-thumb t2"></div>
-                    <div class="folder-thumb t3"></div>
-                  </div>
-                  <div class="folder-meta">
-                    <span class="count">3 projects</span>
-                    <span class="date">2026.03.28</span>
-                  </div>
-                </div>
-              </div>
+            <!-- 3. 프로젝트 업로드 (Primary CTA per design.md §8.1) -->
+            <button class="primary-cta" type="button" id="uploadProjectBtn">
+              <span style="font-size:18px; line-height:1;">+</span> 프로젝트 업로드
+            </button>
 
-              <div class="folder-card alt-4">
-                <div class="folder-tab-wrap">
-                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
-                  </svg>
-                  <span class="folder-tab-label">Concrete Studies</span>
-                </div>
-                <div class="folder-body">
-                  <p class="folder-overview">Surface-level explorations of cast concrete across scales — formwork, finish, and joint detail.</p>
-                  <p class="folder-summary">Form · formwork · finish</p>
-                  <div class="folder-divider"></div>
-                  <div class="folder-thumbs">
-                    <div class="folder-thumb"></div>
-                    <div class="folder-thumb t2"></div>
-                    <div class="folder-thumb t3"></div>
-                  </div>
-                  <div class="folder-meta">
-                    <span class="count">7 projects</span>
-                    <span class="date">2026.02.10</span>
-                  </div>
-                </div>
+            <!-- 4. 보드 (folder containers w/ project cards + 공개/비공개 toggle) -->
+            <div class="profile-section">
+              <div class="profile-section-title">
+                보드 <span class="profile-section-count" id="boardsCount">0</span>
               </div>
+              <div class="board-list" id="boardList"></div>
+            </div>
 
-              <div class="folder-card alt-5">
-                <div class="folder-tab-wrap">
-                  <svg class="folder-tab-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <path d="M 0,21 Q 0,1 5,1 L 67,1 Q 70,1 73,15 L 86,67 L 86,99 L 0,99 Z"/>
-                  </svg>
-                  <span class="folder-tab-label">Landscape Park</span>
+          </div>
+        </div>
+
+        <!-- ===== Sub-screen: 프로필 공유 (business card / carte de visite) ===== -->
+        <div class="screen-instance" data-screen="profile-share">
+          <header class="page-hdr">
+            <div class="hdr-back-group">
+              <button class="back-btn" type="button" data-back-to="profile" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+              <div class="page-title">프로필 공유</div>
+            </div>
+            <button class="icon-btn" type="button" data-goto="profile-edit" title="명함 수정" aria-label="명함 수정">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+          </header>
+          <div class="page-body">
+            <!-- Business card: 2-faced, click to flip (3D rotateY, design.md §8.6
+                 flip pattern). Front = real QR + identity. Back = decorative
+                 fake QR + ARCHIBE stamp (purely visual, doesn't scan). White
+                 paper + black ink regardless of theme. -->
+            <div class="business-card-stage">
+              <div class="business-card-flip" id="businessCardFlip">
+                <!-- FRONT v3 — minimal letterpress: wordmark, vertically centered
+                     identity, compact footer. justify-content: space-between
+                     pushes head/body/foot to top/middle/bottom automatically. -->
+                <div class="business-card bc-front" id="businessCard">
+                  <span class="bc-flip-hint" aria-hidden="true">↻</span>
+                  <header class="bc-head">
+                    <div class="bc-wordmark">ARCHIBE</div>
+                  </header>
+                  <section class="bc-identity">
+                    <div class="bc-name" id="bcName">DAIN KIM</div>
+                    <div class="bc-role" id="bcRole">Architecture Student</div>
+                    <div class="bc-affiliation" id="bcAffiliation">Korea University</div>
+                  </section>
+                  <footer class="bc-foot">
+                    <div class="bc-contact">
+                      <div class="bc-handle" id="bcHandle">@dain_architect</div>
+                      <div class="bc-url" id="bcUrl">architinder.app/u/42</div>
+                    </div>
+                    <div class="bc-qr"><canvas id="profileQrCanvas" width="72" height="72"></canvas></div>
+                  </footer>
                 </div>
-                <div class="folder-body">
-                  <p class="folder-overview">Projects where landscape strategy is the architecture itself, not a backdrop.</p>
-                  <p class="folder-summary">Built form meets terrain</p>
-                  <div class="folder-divider"></div>
-                  <div class="folder-thumbs">
-                    <div class="folder-thumb"></div>
-                    <div class="folder-thumb t2"></div>
-                    <div class="folder-thumb t3"></div>
-                  </div>
-                  <div class="folder-meta">
-                    <span class="count">4 projects</span>
-                    <span class="date">2026.01.22</span>
-                  </div>
+
+                <!-- BACK v3 — completely centered composition: wordmark top,
+                     stamp QR + tiny member meta in dead center, footer caption. -->
+                <div class="business-card bc-back">
+                  <span class="bc-flip-hint" aria-hidden="true">↻</span>
+                  <header class="bc-head">
+                    <div class="bc-wordmark">ARCHIBE</div>
+                  </header>
+                  <section class="bc-back-body">
+                    <div class="bc-back-qr" id="fakeQrSlot" aria-hidden="true"></div>
+                    <div class="bc-back-no" id="bcBackMember">№ 042</div>
+                    <div class="bc-back-est">Est. 2026</div>
+                  </section>
+                  <footer class="bc-back-foot">
+                    <span>Scan to connect</span>
+                  </footer>
                 </div>
               </div>
             </div>
+            <p class="screen-hint">카드를 누르면 뒤집어집니다 · QR을 스캔하면 프로필 탭이 열립니다.</p>
           </div>
         </div>
+
+        <!-- ===== Sub-screen: 프로필 (명함) 수정 ===== -->
+        <div class="screen-instance" data-screen="profile-edit">
+          <header class="page-hdr">
+            <div class="hdr-back-group">
+              <button class="back-btn" type="button" data-back-to="profile-settings" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+              <div class="page-title">명함 수정</div>
+            </div>
+            <button class="hdr-text-btn" type="button" id="profileEditSave">저장</button>
+          </header>
+          <div class="page-body">
+            <p class="screen-hint" style="margin-top:0; margin-bottom:20px;">
+              명함에 표시될 정보를 수정합니다. QR이 가리키는 프로필 URL은 변경되지 않습니다.
+            </p>
+            <form class="edit-form" id="profileEditForm" onsubmit="return false;">
+              <label class="edit-field">
+                <span class="edit-label">이름 (Display name)</span>
+                <input class="edit-input" type="text" id="editName" autocomplete="name" />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">역할 (Role)</span>
+                <input class="edit-input" type="text" id="editRole" placeholder="Architecture Student" />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">소속 (Affiliation)</span>
+                <input class="edit-input" type="text" id="editAffiliation" placeholder="Korea University" />
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">사용자 ID (Username)</span>
+                <input class="edit-input" type="text" id="editUsername" readonly />
+                <span class="edit-hint">고유 식별자 — 변경할 수 없습니다.</span>
+              </label>
+              <label class="edit-field">
+                <span class="edit-label">한 줄 소개 (Bio)</span>
+                <textarea class="edit-input" id="editBio" rows="3"></textarea>
+              </label>
+            </form>
+
+            <!-- 추가 항목: SNS / 외부 링크 / 이메일 등 명함에 함께 보여줄 부가 정보. -->
+            <section class="edit-section">
+              <div class="edit-section-head">
+                <span class="edit-section-title">추가 항목</span>
+                <span class="edit-section-hint">SNS · 포트폴리오 · 이메일 등</span>
+              </div>
+              <div class="edit-add-items" id="editAddItems">
+                <button class="edit-add-chip" type="button" data-add-item="instagram">
+                  <span class="add-plus">＋</span> Instagram
+                </button>
+                <button class="edit-add-chip" type="button" data-add-item="portfolio">
+                  <span class="add-plus">＋</span> 포트폴리오 URL
+                </button>
+                <button class="edit-add-chip" type="button" data-add-item="email">
+                  <span class="add-plus">＋</span> 이메일
+                </button>
+                <button class="edit-add-chip" type="button" data-add-item="custom" id="shareAddItemBtn">
+                  <span class="add-plus">＋</span> 직접 추가
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- ===== Sub-screen: 팔로잉 ===== -->
+        <div class="screen-instance" data-screen="profile-following">
+          <header class="page-hdr">
+            <div class="hdr-back-group">
+              <button class="back-btn" type="button" data-back-to="profile" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+              <div>
+                <div class="page-title">팔로잉</div>
+                <div class="page-sub"><span id="followingCount">0</span>명</div>
+              </div>
+            </div>
+            <span class="hdr-spacer" aria-hidden="true"></span>
+          </header>
+          <div class="page-body">
+            <div class="follow-list" id="followingList"></div>
+          </div>
+        </div>
+
+        <!-- ===== Sub-screen: 팔로워 ===== -->
+        <div class="screen-instance" data-screen="profile-followers">
+          <header class="page-hdr">
+            <div class="hdr-back-group">
+              <button class="back-btn" type="button" data-back-to="profile" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+              <div>
+                <div class="page-title">팔로워</div>
+                <div class="page-sub"><span id="followersCount">0</span>명</div>
+              </div>
+            </div>
+            <span class="hdr-spacer" aria-hidden="true"></span>
+          </header>
+          <div class="page-body">
+            <div class="follow-list" id="followersList"></div>
+          </div>
+        </div>
+
+        <!-- ===== Sub-screen: 설정 ===== -->
+        <div class="screen-instance" data-screen="profile-settings">
+          <header class="page-hdr">
+            <div class="hdr-back-group">
+              <button class="back-btn" type="button" data-back-to="profile" aria-label="뒤로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+              <div class="page-title">설정</div>
+            </div>
+            <span class="hdr-spacer" aria-hidden="true"></span>
+          </header>
+          <div class="page-body">
+            <div class="settings-group">
+              <button class="settings-row" type="button" data-goto="profile-edit">
+                <span class="settings-label">프로필 편집</span>
+                <span class="settings-hint">명함 정보 수정</span>
+                <span class="settings-chevron">›</span>
+              </button>
+              <button class="settings-row" type="button" data-setting="theme">
+                <span class="settings-label">테마 설정</span>
+                <span class="settings-hint" id="themeSettingHint">design.md 디폴트</span>
+                <span class="settings-chevron">›</span>
+              </button>
+              <button class="settings-row" type="button" data-setting="account">
+                <span class="settings-label">계정</span>
+                <span class="settings-chevron">›</span>
+              </button>
+              <button class="settings-row" type="button" data-setting="notifications">
+                <span class="settings-label">알림</span>
+                <span class="settings-chevron">›</span>
+              </button>
+              <button class="settings-row" type="button" data-setting="more">
+                <span class="settings-label">그 외</span>
+                <span class="settings-chevron">›</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div><!-- /.page-main -->
     </div><!-- /.screen -->
   </div><!-- /.device -->
@@ -1330,9 +2433,16 @@
     document.querySelectorAll(".nav-bar .nav-item").forEach(n => {
       n.classList.toggle("active", n.dataset.nav === navKey);
     });
-    /* Boards labels are only measurable when their screen is active */
-    if (screenId === "boards" && typeof updateFolderEllipsis === "function") {
+    /* Folder-tab labels are only measurable when their parent screen is active.
+       Boards is gone but Profile now hosts folder-cards in the 보드 section. */
+    if ((screenId === "boards" || screenId === "profile") &&
+        typeof updateFolderEllipsis === "function") {
       setTimeout(updateFolderEllipsis, 0);
+    }
+    /* Fill the edit form fresh every time we navigate to it (so changes are
+       reflected and user doesn't see stale values). */
+    if (screenId === "profile-edit" && typeof populateProfileEditForm === "function") {
+      populateProfileEditForm();
     }
   }
 
@@ -1371,7 +2481,8 @@
       c.classList.toggle("active", c.dataset.id === themeId);
     });
     document.body.classList.add("has-override");
-    renderFontChips();  /* refresh star pairing */
+    renderFontChips();             /* refresh star pairing */
+    refreshThemeSettingHint();     /* Profile → 설정 → 테마 설정 row hint */
   }
 
   function applyFont(fontId) {
@@ -1384,6 +2495,7 @@
       c.classList.toggle("active", c.dataset.id === fontId);
     });
     document.body.classList.add("has-override");
+    refreshThemeSettingHint();     /* Profile → 설정 → 테마 설정 row hint */
     /* Different font → different text widths → recompute truncation */
     if (typeof updateFolderEllipsis === "function") {
       setTimeout(updateFolderEllipsis, 0);
@@ -1597,11 +2709,514 @@
   window.addEventListener("resize", updateFolderEllipsis);
   setTimeout(updateFolderEllipsis, 0);
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     Profile tab — mock data + renderers
+     ────────────────────────────────────────────────────────────────────────
+     The QR encodes a *public* share URL containing the user's unique
+     `user_id`. Passwords are never put in the QR — anyone can decode it from
+     a photo. `user_id` is enough to identify the profile because it's unique
+     in Django's User table. The URL deep-links to the user's profile tab,
+     so scanning the QR opens that user's profile.
+
+     Real-data wiring (when the Django backend is connected):
+       const meRes = await fetch("http://localhost:8001/api/v1/auth/me/", {
+         headers: { Authorization: `Bearer ${jwtAccessToken}` },
+       });
+       const me = await meRes.json();   // { user_id, display_name, avatar_url }
+       // → replace PROFILE_MOCK_USER with `me`, fetch boards/follows from API
+     ═══════════════════════════════════════════════════════════════════════ */
+  /* PROFILE_MOCK_USER drives both the Profile header AND the business-card
+     fields on the Share screen. The edit form (Settings → 프로필 편집)
+     mutates this object in place and re-renders the affected views.    */
+  const PROFILE_MOCK_USER = {
+    user_id: 42,
+    username: "dain_architect",
+    display_name: "Dain Kim",
+    role: "Architecture Student",
+    affiliation: "Korea University",
+    bio: "건축학과 학생 · Korea University",
+    initials: "DK",
+  };
+  /* Share URL deep-links to the user's profile tab (`/u/<id>` is the profile route
+     in the SPA). Scanning the QR opens that user's profile screen. */
+  const SHARE_URL_BASE = "https://architinder.app/u/";
+  const buildShareUrl = (user) => SHARE_URL_BASE + user.user_id;
+
+  const MOCK_FOLLOWING = [
+    { user_id: 11, username: "sanaa_fan",    display_name: "Mina Park",    board_count: 8  },
+    { user_id: 12, username: "kuma_lover",   display_name: "Joon Lee",     board_count: 14 },
+    { user_id: 13, username: "concrete_obs", display_name: "Hyemi Choi",   board_count: 5  },
+    { user_id: 14, username: "brutalist_kr", display_name: "Seungwoo Kim", board_count: 22 },
+  ];
+  const MOCK_FOLLOWERS = [
+    { user_id: 11, username: "sanaa_fan",   display_name: "Mina Park",  board_count: 8  },
+    { user_id: 21, username: "junior_arch", display_name: "Yujin Han",  board_count: 3  },
+    { user_id: 22, username: "studio_kim",  display_name: "Studio Kim", board_count: 17 },
+  ];
+  /* MOCK_BOARDS — `photos` holds 3 Unsplash URLs per board; the first is the
+     hero image (used by Magazine variant), all 3 are used by Ledger/Strip.   */
+  const UN = (id, w = 800) => `https://images.unsplash.com/${id}?w=${w}&auto=format&q=80`;
+  const MOCK_BOARDS = [
+    {
+      name: "Graduation Project Reference Pack 2026",
+      overview: "Final studio submission focusing on contemporary art spaces with permeable boundaries between gallery and city.",
+      summary:  "Museums · cultural spaces · permeable boundaries",
+      project_count: 14,
+      date: "2026.03.14",
+      visibility: "public",
+      photos: [
+        UN("photo-1487958449943-2429e8be8625"),
+        UN("photo-1545324418-cc1a3fa10c00"),
+        UN("photo-1503387762-592deb58ef4e"),
+        UN("photo-1497366216548-37526070297c"),
+        UN("photo-1486718448742-163732cd1544"),
+        UN("photo-1496564203457-11bb12075d90"),
+        UN("photo-1518563620770-22fa6c0cf7c1"),
+        UN("photo-1493663284031-b7e3aefcae8e"),
+      ],
+    },
+    {
+      name: "Museum References",
+      overview: "Curated examples of restraint and atmosphere in museum architecture, focused on light and material.",
+      summary:  "SANAA · Zumthor · Ando",
+      project_count: 8,
+      date: "2026.04.02",
+      visibility: "public",
+      photos: [
+        UN("photo-1497366216548-37526070297c"),
+        UN("photo-1486718448742-163732cd1544"),
+        UN("photo-1496564203457-11bb12075d90"),
+        UN("photo-1517089596392-fb9a9033e05b"),
+        UN("photo-1517400508447-f8dd518b86db"),
+        UN("photo-1518709268805-4e9042af9f23"),
+      ],
+    },
+    {
+      name: "Brutalist Civic",
+      overview: "Concrete-led public buildings exploring weight, light, and texture as a civic gesture.",
+      summary:  "Raw concrete · civic presence",
+      project_count: 5,
+      date: "2026.04.20",
+      visibility: "private",
+      photos: [
+        UN("photo-1518563620770-22fa6c0cf7c1"),
+        UN("photo-1493663284031-b7e3aefcae8e"),
+        UN("photo-1517089596392-fb9a9033e05b"),
+        UN("photo-1486325212027-8081e485255e"),
+        UN("photo-1466442929976-97f336a657be"),
+      ],
+    },
+  ];
+
+  function initialsOf(name) {
+    return name.split(/\s+/).map(s => s[0] || "").join("").slice(0, 2).toUpperCase();
+  }
+
+  function applyMockProfile() {
+    const u = PROFILE_MOCK_USER;
+    const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    /* Profile header + hero */
+    set("profileAvatar",       u.initials);
+    set("profileName",         u.display_name);
+    set("profileUsername",     "@" + u.username);
+    set("profileHeaderHandle", "@" + u.username);
+    /* Business card (Share sub-screen) — both faces */
+    const idStr = String(u.user_id).padStart(3, "0");
+    set("bcName",         (u.display_name || "").toUpperCase());
+    set("bcRole",         u.role);
+    set("bcAffiliation",  u.affiliation);
+    set("bcHandle",       "@" + u.username);
+    /* URL: drop the https:// scheme on the card — reads more like printed
+       paper that way. The QR still encodes the full URL. */
+    set("bcUrl",          buildShareUrl(u).replace(/^https?:\/\//, ""));
+    /* Back face — sync member number */
+    set("bcBackMember",   "№ " + idStr);
+  }
+
+  function renderProfileShareQr() {
+    const canvas = document.getElementById("profileQrCanvas");
+    if (!canvas) return;
+    if (!window.QRCode) {
+      console.warn("[profile QR] qrcode.js not loaded — check the <script> tag in <head>.");
+      return;
+    }
+    const url = buildShareUrl(PROFILE_MOCK_USER);
+    QRCode.toCanvas(canvas, url, {
+      width: 72,
+      margin: 0,                   /* card already has its own padding */
+      color: { dark: "#000000", light: "#FFFFFF" },
+      errorCorrectionLevel: "M",
+    }, (err) => { if (err) console.error("[profile QR] render failed:", err); });
+  }
+
+  /* Fake QR — decorative stamp pattern on the business card's back face.
+     Real QR code anatomy: 3 finder squares (top-left, top-right, bottom-left)
+     each 7×7 with concentric black/white rings, plus pseudo-random body
+     modules. Doesn't actually encode anything — purely visual. Seeded by
+     user_id so each user's stamp looks "personalised". 21×21 = minimum QR
+     size, ~430 modules total.                                            */
+  function generateFakeQrSvg(seed = 42, size = 21) {
+    /* Lehmer-style LCG for deterministic pseudo-random fill */
+    let s = (seed * 9301 + 49297) % 233280;
+    const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+
+    const filled = new Set();
+    const inFinderZone = (x, y) =>
+      (x < 8 && y < 8) ||
+      (x >= size - 7 && y < 8) ||
+      (x < 8 && y >= size - 7);
+
+    const addFinder = (ox, oy) => {
+      for (let i = 0; i < 7; i++) for (let j = 0; j < 7; j++) {
+        const outerRing = (i === 0 || i === 6 || j === 0 || j === 6);
+        const innerSquare = (i >= 2 && i <= 4 && j >= 2 && j <= 4);
+        if (outerRing || innerSquare) filled.add(`${ox + i},${oy + j}`);
+      }
+    };
+    addFinder(0, 0);
+    addFinder(size - 7, 0);
+    addFinder(0, size - 7);
+
+    /* Pseudo-random body modules — ~48% fill, looks QR-ish */
+    for (let x = 0; x < size; x++) {
+      for (let y = 0; y < size; y++) {
+        if (inFinderZone(x, y)) continue;
+        if (rnd() < 0.48) filled.add(`${x},${y}`);
+      }
+    }
+
+    const rects = [...filled].map(k => {
+      const [x, y] = k.split(",");
+      return `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+    }).join("");
+
+    return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">${rects}</svg>`;
+  }
+
+  function renderFakeQr() {
+    const slot = document.getElementById("fakeQrSlot");
+    if (!slot) return;
+    slot.innerHTML = generateFakeQrSvg(PROFILE_MOCK_USER.user_id);
+    /* Update the back-face member number to match user_id */
+    const mem = document.getElementById("bcBackMember");
+    if (mem) mem.textContent = `MEMBER № ${PROFILE_MOCK_USER.user_id}`;
+  }
+
+  function wireBusinessCardFlip() {
+    const flip = document.getElementById("businessCardFlip");
+    if (!flip) return;
+    flip.addEventListener("click", () => flip.classList.toggle("is-flipped"));
+  }
+
+  /* Populate the edit form whenever the user navigates to it; save writes
+     back into PROFILE_MOCK_USER and re-renders the card.                 */
+  function populateProfileEditForm() {
+    const u = PROFILE_MOCK_USER;
+    const set = (id, value) => { const el = document.getElementById(id); if (el != null) el.value = value; };
+    set("editName",        u.display_name);
+    set("editRole",        u.role);
+    set("editAffiliation", u.affiliation);
+    set("editUsername",    u.username);
+    set("editBio",         u.bio);
+  }
+  function saveProfileEditForm() {
+    const u = PROFILE_MOCK_USER;
+    const get = (id) => document.getElementById(id)?.value?.trim() ?? "";
+    u.display_name = get("editName")        || u.display_name;
+    u.role         = get("editRole")        || u.role;
+    u.affiliation  = get("editAffiliation") || u.affiliation;
+    u.bio          = get("editBio")         || u.bio;
+    /* Re-derive initials from the first 2 chars of each name word */
+    u.initials = u.display_name.split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase();
+    applyMockProfile();
+    /* Behave like a back action — pop nav stack so user returns to wherever
+       they invoked edit from (share screen OR settings). */
+    navBack("profile-share");
+  }
+
+  /* Sub-screen navigation:
+     - data-goto      pushes current screen onto navStack, then navigates
+     - data-back-to   pops navStack (falls back to the static attribute if empty)
+     - data-scroll-to scrolls within the current screen
+     Single delegated listener handles all three.
+
+     The stack makes back context-aware: if you enter profile-edit via the
+     ✎ icon on profile-share, back returns to profile-share. If you enter
+     via Settings → 프로필 편집, back returns to Settings.                  */
+  const navStack = [];
+  function currentScreenId() {
+    return document.querySelector(".screen-instance.active")?.dataset.screen || null;
+  }
+  function navBack(fallback) {
+    const target = navStack.length > 0 ? navStack.pop() : fallback;
+    if (target) setScreen(target);
+  }
+  function wireSubScreenNav() {
+    document.addEventListener("click", (e) => {
+      const goto = e.target.closest("[data-goto]");
+      if (goto) {
+        e.preventDefault();
+        const current = currentScreenId();
+        if (current && current !== goto.dataset.goto) navStack.push(current);
+        setScreen(goto.dataset.goto);
+        return;
+      }
+      const back = e.target.closest("[data-back-to]");
+      if (back) {
+        e.preventDefault();
+        navBack(back.dataset.backTo);
+        return;
+      }
+      const scrollTo = e.target.closest("[data-scroll-to]");
+      if (scrollTo) {
+        e.preventDefault();
+        const target = document.getElementById(scrollTo.dataset.scrollTo);
+        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  }
+
+  /* Wire the top control panel toggle for Board Style variant */
+  function wireProfileControls() {
+    document.querySelectorAll("[data-board-style]").forEach(btn => {
+      btn.addEventListener("click", () => setBoardStyle(btn.dataset.boardStyle));
+    });
+  }
+
+  /* In production: route to /u/<user_id> (the public profile tab) in the SPA.
+     For preview, just log — enough to demonstrate the wired interaction. */
+  function navigateToUserProfile(user) {
+    console.log(`[nav] → ${SHARE_URL_BASE}${user.user_id} (@${user.username})`);
+    // window.location.href = SHARE_URL_BASE + user.user_id;  // production
+  }
+
+  function renderFollowList(containerId, users, emptyMsg) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    if (!users.length) {
+      const empty = document.createElement("div");
+      empty.className = "follow-empty";
+      empty.textContent = emptyMsg;
+      wrap.appendChild(empty);
+      return;
+    }
+    users.forEach(u => {
+      const item = document.createElement("button");
+      item.className = "follow-item";
+      item.type = "button";
+      item.dataset.userId = u.user_id;
+      item.innerHTML = `
+        <span class="follow-avatar">${initialsOf(u.display_name)}</span>
+        <span class="follow-info">
+          <span class="follow-name">${u.display_name}</span>
+          <span class="follow-meta">@${u.username} · 보드 ${u.board_count}</span>
+        </span>
+        <span class="follow-chevron">›</span>
+      `;
+      item.addEventListener("click", () => navigateToUserProfile(u));
+      wrap.appendChild(item);
+    });
+  }
+
+  /* ─── Board renderers — 3 variants, dispatched by activeBoardStyle ─── */
+  let activeBoardStyle = "magazine";       // 'magazine' | 'ledger' | 'strip'
+
+  function visibilityPillHtml(board, bIdx, variant = "light") {
+    /* variant: 'light' (default, on surface) | 'dark' (over dark image) */
+    const cls = variant === "dark" ? "b-visibility on-dark" : "b-visibility";
+    const label = board.visibility === "public" ? "공개" : "비공개";
+    return `<button class="${cls}" type="button" data-state="${board.visibility}" data-board-idx="${bIdx}">
+              <span class="dot"></span><span class="vis-label">${label}</span>
+            </button>`;
+  }
+  const pad2 = (n) => String(n).padStart(2, "0");
+
+  /* A) MAGAZINE — hero image (4:3) + caption card.
+     Hierarchy: 제목 → 키워드(mono caps) → 한줄 요약(full, no truncation)
+                → 룰 → 프로젝트 수 & 날짜                                  */
+  function renderBoardsMagazine(boards) {
+    return boards.map((board, bIdx) => `
+      <div class="board-magazine" data-board-idx="${bIdx}">
+        <div class="mag-cover" style="background-image:url('${board.photos[0]}');">
+          <div class="mag-cover-top">
+            <span>№ ${pad2(bIdx + 1)}</span>
+            ${visibilityPillHtml(board, bIdx, "dark")}
+          </div>
+        </div>
+        <div class="mag-caption">
+          <div class="mag-title">${board.name}</div>
+          <div class="mag-keyword">${board.summary}</div>
+          <div class="mag-overview">${board.overview}</div>
+          <div class="mag-rule"></div>
+          <div class="mag-meta">
+            <span>${board.project_count} Projects</span>
+            <span>${board.date}</span>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  /* B) LEDGER — pure typography, massive display title, sharp thumbs.
+     Renders up to project_count thumbs (capped by photos.length); CSS
+     overflow:hidden then visually crops to whatever fits in the row.   */
+  function renderBoardsLedger(boards) {
+    return boards.map((board, bIdx) => {
+      const n = Math.min(board.project_count, board.photos.length);
+      const thumbs = board.photos.slice(0, n).map(url =>
+        `<div style="background-image:url('${url}');"></div>`
+      ).join("");
+      return `
+      <div class="board-ledger" data-board-idx="${bIdx}">
+        <div class="led-eyebrow">
+          <span class="led-no">№ ${pad2(bIdx + 1)}</span>
+          ${visibilityPillHtml(board, bIdx, "light")}
+        </div>
+        <div class="led-title">${board.name}</div>
+        <div class="led-summary">${board.summary}</div>
+        <div class="led-overview">${board.overview}</div>
+        <div class="led-thumbs">${thumbs}</div>
+        <div class="led-meta">
+          <span class="led-count">${board.project_count} Projects</span>
+          <span class="led-meta-right">${board.date}</span>
+        </div>
+      </div>
+      `;
+    }).join("");
+  }
+
+  /* D) INDEX — tabular archive: all boards as a single index list ──── */
+  function renderBoardsIndex(boards) {
+    const rows = boards.map((board, bIdx) => `
+      <button class="bi-row" type="button" data-board-idx="${bIdx}">
+        <span class="bi-col-no">${pad2(bIdx + 1)}</span>
+        <span class="bi-col-name">
+          <span class="bi-name">${board.name}</span>
+          <span class="bi-summary">${board.summary}</span>
+        </span>
+        <span class="bi-col-proj">${board.project_count}</span>
+        <span class="bi-col-date">${board.date}</span>
+        <span class="bi-col-vis">${visibilityPillHtml(board, bIdx, "light")}</span>
+      </button>
+    `).join("");
+    return `
+      <div class="board-index">
+        <div class="bi-header">
+          <span class="bi-col-no">№</span>
+          <span class="bi-col-name">Name</span>
+          <span class="bi-col-proj">Proj.</span>
+          <span class="bi-col-date">Date</span>
+          <span class="bi-col-vis">Status</span>
+        </div>
+        ${rows}
+      </div>
+    `;
+  }
+
+  /* C) STRIP — IKEA: numbered header + 3-photo strip + summary line + meta */
+  function renderBoardsStrip(boards) {
+    return boards.map((board, bIdx) => `
+      <div class="board-strip" data-board-idx="${bIdx}">
+        <div class="strip-header">
+          <span class="strip-no">${pad2(bIdx + 1)}</span>
+          <span class="strip-title">${board.name}</span>
+          ${visibilityPillHtml(board, bIdx, "light")}
+        </div>
+        <div class="strip-photos">
+          ${board.photos.slice(0, 3).map(url => `
+            <div class="strip-photo" style="background-image:url('${url}');"></div>
+          `).join("")}
+        </div>
+        <div class="strip-meta">
+          <span class="strip-summary">${board.summary}</span>
+          <span class="strip-stats">${board.project_count} Projects · ${board.date}</span>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function renderBoards(boards) {
+    const wrap = document.getElementById("boardList");
+    if (!wrap) return;
+    const renderer = {
+      magazine: renderBoardsMagazine,
+      ledger:   renderBoardsLedger,
+      strip:    renderBoardsStrip,
+      index:    renderBoardsIndex,
+    }[activeBoardStyle] || renderBoardsMagazine;
+    wrap.innerHTML = renderer(boards);
+
+    // Wire visibility toggles (delegation would also work but per-button is cleaner here)
+    wrap.querySelectorAll(".b-visibility").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const next = btn.dataset.state === "public" ? "private" : "public";
+        btn.dataset.state = next;
+        btn.querySelector(".vis-label").textContent = next === "public" ? "공개" : "비공개";
+      });
+    });
+  }
+
+  function setBoardStyle(style) {
+    activeBoardStyle = style;
+    document.querySelectorAll("[data-board-style]").forEach(b =>
+      b.classList.toggle("active", b.dataset.boardStyle === style));
+    renderBoards(MOCK_BOARDS);
+  }
+
+  function refreshThemeSettingHint() {
+    const hint = document.getElementById("themeSettingHint");
+    if (!hint) return;
+    const themeName = activeThemeId ? (findTheme(activeThemeId)?.name ?? "—") : "design.md 디폴트";
+    const fontName  = activeFontId  ? (findFont(activeFontId)?.name  ?? "—") : "design.md 디폴트";
+    hint.textContent = `${themeName} · ${fontName}`;
+  }
+
+  function wireProfileMisc() {
+    const upload = document.getElementById("uploadProjectBtn");
+    if (upload) upload.addEventListener("click", () => console.log("[upload] open project upload flow"));
+
+    /* Add-item chips inside the edit screen — all placeholders for now */
+    document.querySelectorAll("[data-add-item]").forEach(chip => {
+      chip.addEventListener("click", () => {
+        console.log("[edit] add item:", chip.dataset.addItem);
+      });
+    });
+
+    /* Edit-card save button — writes mock + bounces back to the card view */
+    const save = document.getElementById("profileEditSave");
+    if (save) save.addEventListener("click", saveProfileEditForm);
+
+    // Settings row clicks (placeholders — would open sub-screens)
+    document.querySelectorAll(".settings-row").forEach(row => {
+      row.addEventListener("click", () => console.log("[settings]", row.dataset.setting));
+    });
+  }
+
   /* ─── Initialize ─── */
   setEnv("desktop");
   setScreen(SCREENS[0].id);
   renderThemeChips();
   renderFontChips();
+  applyMockProfile();
+  renderProfileShareQr();
+  renderFakeQr();              /* decorative stamp QR on the card's back face */
+  wireBusinessCardFlip();
+  renderFollowList("followingList", MOCK_FOLLOWING, "아직 팔로우하는 유저가 없습니다.");
+  renderFollowList("followersList", MOCK_FOLLOWERS, "아직 팔로워가 없습니다.");
+  renderBoards(MOCK_BOARDS);        // initial style: magazine (set above)
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set("followingCount",      MOCK_FOLLOWING.length);
+  set("followersCount",      MOCK_FOLLOWERS.length);
+  set("boardsCount",         MOCK_BOARDS.length);
+  set("statsBoardsCount",    MOCK_BOARDS.length);
+  set("statsFollowingCount", MOCK_FOLLOWING.length);
+  set("statsFollowersCount", MOCK_FOLLOWERS.length);
+  refreshThemeSettingHint();
+  wireProfileMisc();
+  wireSubScreenNav();
+  wireProfileControls();
 
   /* ─── Live reload poll on design.md mtime ─── */
   setInterval(async () => {

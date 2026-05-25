@@ -113,6 +113,16 @@ TYPOGRAPHY_SCALE = [
 SCREENS = [
     {"id": "ai-search", "name": "AI Search", "nav": "search"},
     {"id": "discovery", "name": "Discovery", "nav": "discover"},
-    {"id": "persona",   "name": "Persona",   "nav": "profile"},
-    {"id": "boards",    "name": "Boards",    "nav": "boards"},
+    # Profile main + 4 sub-screens reachable from quick-action buttons.
+    # All sub-screens carry nav="profile" so the Profile nav stays highlighted.
+    # `profile` is listed first so setScreenByNav("profile") lands on the main.
+    {"id": "profile",            "name": "Profile",            "nav": "profile"},
+    {"id": "profile-share",      "name": "Profile / Share",    "nav": "profile"},
+    {"id": "profile-following",  "name": "Profile / Following", "nav": "profile"},
+    {"id": "profile-followers",  "name": "Profile / Followers", "nav": "profile"},
+    {"id": "profile-settings",   "name": "Profile / Settings",  "nav": "profile"},
+    {"id": "profile-edit",       "name": "Profile / Edit Card", "nav": "profile"},
+    # Persona is a sub-report shown after a discovery round — no nav button.
+    {"id": "persona",   "name": "Persona",   "nav": "_persona"},
+    # Boards content has been absorbed into Profile (보드 section).
 ]
