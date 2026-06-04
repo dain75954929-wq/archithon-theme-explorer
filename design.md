@@ -305,6 +305,91 @@ breakpoint-mobile-max: 768   # ≤ 768px → 모바일 레이아웃
 breakpoint-desktop-min: 769  # ≥ 769px → 데스크탑 레이아웃
 ```
 
+### 7.4 Mobile Safari UX 디테일 ✅
+모바일(특히 iOS Safari)에서만 발생하는 5가지 큰 함정과 그 해결책. 모든 모바일 모듈에 일률 적용.
+
+#### 7.4.1 입력 포커스 시 자동 줌인 방지 (iOS)
+iOS Safari는 **font-size가 16px 미만인 input/textarea/select에 포커스되면 화면을 자동 확대**한다. 이후 사용자가 확대 해제를 해야 하고, 폼 작성 중에는 거의 항상 발생해서 매우 거슬리는 동작.
+
+```yaml
+input-min-font-size-mobile: 16    # 미만이면 iOS Safari가 강제 zoom-in
+```
+
+규칙:
+- 모든 `<input>` `<textarea>` `<select>`는 모바일에서 **`font-size: 16` 이상** 보장
+- 컴포넌트 인라인 스타일 + `index.css`의 global rule 양쪽에 적용 (둘 중 하나만 두면 깜빡임 또는 누락)
+  ```css
+  /* index.css 전역 */
+  input, textarea, select { font-size: 16px; }
+  ```
+- 이 16px는 위계가 아니라 **iOS 동작 보호선** — 데스크탑에서도 같이 16px여도 무방
+
+#### 7.4.2 키보드가 열린 다음 새 입력칸을 스크롤로 노출 (visualViewport)
+"+ 항목 추가" 같은 액션이 리스트 맨 아래에 새 input을 만들고 자동 포커스 → 키보드가 뜨면서 그 input을 가린다. 단순 `requestAnimationFrame + scrollIntoView`는 키보드가 viewport를 줄이기 *전*에 실행되어 결국 가려진 상태로 멈춤.
+
+해결: **키보드가 viewport를 줄이는 `visualViewport.resize` 이벤트를 기다린 후** `scrollIntoView({block: 'center'})`. 400ms fallback timer로 데스크탑/이벤트 없는 환경 보호.
+
+```yaml
+keyboard-reveal-fallback-ms: 400   # visualViewport resize가 안 오면 강제 scrollIntoView
+keyboard-reveal-block: "center"    # 키보드 위 가운데에 입력칸 위치
+```
+
+원칙:
+- 동적으로 추가된 input이 viewport 밖에 있으면 **항상 visualViewport 패턴으로 노출**
+- block은 `center` (`start`/`end`는 키보드 상단/하단에 붙어버려 사용자가 컨텍스트 잃음)
+- listener는 한 번 발화 후 제거 (메모리/중복 호출 방지)
+
+#### 7.4.3 오버스크롤 영역 배경 통일 (`<meta name="theme-color">` + `background-attachment: fixed`)
+iOS Safari에서 페이지를 위/아래 끝을 넘어 바운스하면, 페이지 컨테이너 뒤의 영역이 노출된다. 다크 테마에서 그 영역이 흰색으로 보이는 게 큰 문제.
+
+해결:
+1. **`<meta name="theme-color">`** 를 현재 테마의 `bg`로 동적 갱신 → iOS Safari 상단/하단 바운스 영역의 톤이 테마 배경과 일치
+2. `html`에 `background: var(--color-bg); background-attachment: fixed;` → 문서 자체가 스크롤되더라도 오버스크롤 영역이 테마 색으로 채움
+3. **inner overflow scroll 컨테이너를 만들지 않는다** — document가 스크롤되어야 iOS의 pull-to-refresh와 sticky header가 자연스럽게 동작
+
+```html
+<!-- index.html -->
+<meta name="theme-color" content="#FFFFFF" />   <!-- 초기값; JS가 테마 적용 시 갱신 -->
+```
+```js
+// themes.js applyTheme(id)
+function setMetaThemeColor(hex) {
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'theme-color'); document.head.appendChild(meta) }
+  meta.setAttribute('content', hex)
+}
+```
+```css
+/* index.css */
+html, body { background: var(--color-bg); background-attachment: fixed; min-height: 100%; }
+[data-theme="github-dark"]  { color-scheme: dark; }
+[data-theme="synthwave"]    { color-scheme: dark; }
+```
+
+> ⚠️ inner scroll 컨테이너(`overflow: auto` 안쪽 div)로 처리하면 pull-to-refresh가 사라지고 sticky header가 컨테이너 안쪽에 갇힌다. 반드시 document 스크롤 유지.
+
+#### 7.4.4 모바일 네이티브 카메라/갤러리 picker
+파일 선택 input에 `accept="image/*"`만 붙이면 iOS/Android 모두 **카메라·갤러리 둘 다 선택할 수 있는 네이티브 시트**를 띄운다. 별도 라이브러리/권한 요청 코드 없음 — OS가 권한 알림도 자동 처리.
+
+```html
+<input type="file" accept="image/*" style="display:none" />
+<button onClick={() => fileRef.current?.click()}>사진 변경</button>
+```
+- 데스크탑에서는 파일 picker가 뜸 (자연 fallback)
+- 선택된 이미지는 클라이언트에서 **256×256 정사각 JPEG로 리사이즈**한 뒤 저장/업로드 — localStorage/서버 둘 다 페이로드 작게 유지
+- 같은 파일을 다시 고르려면 `e.target.value = ''`로 input 리셋
+
+#### 7.4.5 모바일 단일 컬럼 셸 (mobile-only 모듈)
+`archibe-profile`처럼 **모바일 전용으로 디자인되는 모듈**은 데스크탑 레이아웃을 별도로 만들지 않고 단일 셸로 처리:
+
+```yaml
+mobile-only-shell-max-width: 460   # 모바일 폼팩터 기준
+mobile-only-shell-margin:    "0 auto"
+mobile-only-shell-bg:        "var(--color-bg)"
+```
+- 셸을 `max-width: 460px; margin: 0 auto`로 두면 데스크탑 브라우저에서는 가운데 정렬된 모바일 폭으로 보임 — 별도 레이아웃 없이도 깨지지 않음
+- 향후 데스크탑 전용 레이아웃이 정해지면 그때 분리
+
 ---
 
 ## 8. Components
@@ -715,6 +800,89 @@ icon-btn-radius:        50%
 `.hdr-text-btn` (e.g. "저장")도 같은 36px height + pill radius로 헤더 줄에
 세로 정렬 일치.
 
+### 8.13 Toggle (Switch) ✅
+on/off 이분 설정용 pill 스위치. 알림 설정·공개/비공개 같은 곳에 사용.
+체크박스가 아니라 **즉시 적용되는 설정**을 표현 — 저장 버튼 없음.
+
+```yaml
+toggle-width:           44
+toggle-height:          26
+toggle-thumb-size:      20
+toggle-thumb-inset:     3       # track 안쪽 패딩 (top + left/right offset)
+toggle-track-radius:    999     # pill
+toggle-thumb-radius:    "50%"
+toggle-bg-on:           "var(--accent-1)"
+toggle-bg-off:          "var(--surface-3)"
+toggle-thumb-color:     "#FFFFFF"
+toggle-thumb-shadow:    "0 1px 3px rgba(0,0,0,0.25)"
+toggle-transition:      "var(--motion-fast) var(--motion-ease)"   # bg + thumb slide
+toggle-disabled-opacity: 0.55
+```
+
+**HTML / 접근성**
+- `<button type="button" role="switch" aria-checked={checked} aria-label="..." />` — 체크박스 아닌 switch
+- 키보드: Tab 포커스 + Space/Enter로 토글 (브라우저 기본 button 동작)
+- Disabled 시 `disabled` 속성 + `cursor: not-allowed`
+
+**ChannelRow (라벨 + 토글 한 줄)**
+```
++----------------------------+
+| 푸시                  [●——] |
+| 이메일                [——○] |
++----------------------------+
+```
+- 라벨 좌측 (`fontSize: 13`, `--color-text`)
+- 토글 우측, `justify-content: space-between`
+- 행 패딩 `4px 0`, 행 간격 `gap: 4`
+
+**CategoryBlock (카드 안에 N개 ChannelRow 묶음)** — 알림 설정의 기본 단위
+```
+┌─────────────────────────────────────┐
+│ 소셜 활동                            │  ← 라벨 (14px / 600 / --color-text)
+│ 팔로우 · 좋아요 · 댓글 · 멘션         │  ← hint (12px / --color-text-muted)
+│                                     │
+│ 푸시                          [●——] │
+│ 이메일                        [●——] │
+└─────────────────────────────────────┘
+```
+```yaml
+toggle-card-bg:         "var(--surface)"
+toggle-card-border:     "1px solid var(--border)"
+toggle-card-radius:     "var(--radius-lg)"
+toggle-card-padding:    16
+toggle-card-margin-y:   12
+```
+
+**잠금 (locked) 상태 — 필수/시스템 설정 표현** ✅
+일부 설정(예: 계정 보안 알림)은 **표시는 하되 사용자가 끄지 못하게** 잠근다. 시각화 규칙:
+- 카테고리 라벨 옆에 **자물쇠 아이콘** (§8.12 stroke-1.5, `width: 12`, `--color-text-dim`)
+- 토글 둘 다 `disabled` (opacity 0.55, `cursor: not-allowed`)
+- **저장된 값과 무관하게 항상 ON으로 렌더** — 데이터가 어떤 이유로 OFF여도 UI는 ON을 보임 (시스템이 그 알림을 강제 발송하기 때문에 그 사실을 그대로 반영)
+- 카드 하단에 안내 텍스트: "이 알림은 …을 위해 항상 켜집니다."
+  ```yaml
+  toggle-locked-notice-size:  11
+  toggle-locked-notice-color: "var(--color-text-dim)"
+  toggle-locked-notice-margin-top: 10
+  ```
+
+**저장 패턴 — fire-and-forget**
+토글이 바뀌면 **저장 버튼 없이 즉시** API를 호출. UI는 낙관적 업데이트(`setState`)를 먼저 적용하고, 네트워크 실패는 조용히 무시(다음 진입에서 서버 값으로 재동기화).
+```js
+const onChange = (next) => {
+  setUser((u) => ({ ...u, notifications: next }))
+  updateNotificationPrefs(next).catch(() => {})    // fire-and-forget
+}
+```
+원칙:
+- 설정 토글 = 즉시 저장, 저장 버튼 만들지 않음 ("저장" 단계가 있으면 사용자가 토글을 누르고 떠나는 멘탈 모델과 어긋남)
+- 폼 입력(이름·이메일 등) = 명시적 "저장" 버튼 유지 (입력 중간값을 매 keystroke 저장하면 안 됨)
+
+**옵트인 vs 옵트아웃 기본값 정책** ✅
+한국 정보통신망법·개인정보보호법·GDPR은 **마케팅성 통신을 사전 명시 동의(옵트인)** 로 요구. 적용:
+- **마케팅·프로모션 알림**: 기본 OFF (옵트인) — 사용자가 직접 켜야 발송
+- **서비스 운영 알림**(계정 보안, 본인 콘텐츠 활동): 기본 ON — 서비스 사용에 필요한 것으로 간주
+- **그 외 일반 알림**(소셜·추천): 기본 ON 또는 케이스별 — 가독성보다 사용자 선택권 우선
+
 ---
 
 ## 9. 결정된 사항
@@ -764,6 +932,15 @@ icon-btn-radius:        50%
 | Icon Size | **header 18 / nav 22 / inline-in-button 16** | (§8.12) ✅ |
 | Icon SVG 규약 | **viewBox 24, fill=none, stroke=currentColor, linecap/join=round, 인라인 stroke-width 금지** | (§8.12) ✅ |
 | Header Button Frame | **.icon-btn = .back-btn 단일 spec: 36×36 circle, transparent, hover만 surface bg** | (§8.12) ✅ |
+| iOS 입력 줌인 방지 | **모든 input/textarea/select font-size ≥ 16px (전역 + 인라인 양쪽)** | (§7.4.1) ✅ |
+| 키보드-aware 스크롤 | **`visualViewport.resize` 후 `scrollIntoView({block:'center'})`, 400ms fallback** | (§7.4.2) ✅ |
+| 오버스크롤 배경 통일 | **`<meta name="theme-color">` 동적 갱신 + `html { background-attachment: fixed }`, document-level 스크롤 유지** | (§7.4.3) ✅ |
+| 모바일 사진 picker | **`<input type="file" accept="image/*">` 단독 사용 (카메라/갤러리 OS 시트 자동 처리), 클라이언트 256×256 JPEG 리사이즈** | (§7.4.4) ✅ |
+| Mobile-only 모듈 셸 | **`max-width: 460px; margin: 0 auto`로 단일 컬럼 (데스크탑은 가운데 정렬된 모바일 폭으로 fallback)** | (§7.4.5) ✅ |
+| Toggle (Switch) Spec | **44×26 pill / thumb 20 / on=accent-1, off=surface-3 / role=switch, aria-checked** | (§8.13) ✅ |
+| Toggle 저장 패턴 | **즉시 저장 (fire-and-forget), 별도 저장 버튼 없음. 폼 입력은 명시적 저장 버튼 유지** | (§8.13) ✅ |
+| Toggle 잠금 상태 | **자물쇠 아이콘 + disabled + 항상 ON 강제 렌더 + 카드 하단 안내 텍스트** | (§8.13) ✅ |
+| 알림 기본값 정책 | **마케팅=OFF (옵트인), 보안=ON, 일반=ON. 한국 정보통신망법·GDPR 준수** | (§8.13) ✅ |
 
 ---
 
